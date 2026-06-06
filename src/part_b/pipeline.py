@@ -17,7 +17,7 @@ from src.core.cluster import cluster
 from src.core.embedding_store import save_embeddings
 from src.core.reduce import preprocess as _pre, umap_2d
 from src.core.types import Asset
-from src.core.visualize import metric_table_png, scatter_2d
+from src.core.visualize import cluster_montage, metric_table_png, scatter_2d
 from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
@@ -50,8 +50,13 @@ def _age_bucket(age: float) -> str:
 def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path,
                          algorithms: Sequence[str], k_min: int, k_max: int,
                          preprocess: Sequence[str], pca_components: int | None,
-                         umap_cfg: dict, seed: int) -> dict:
-    """Embed, cluster per algorithm, characterize clusters, validate vs pseudo-labels, plot."""
+                         umap_cfg: dict, seed: int,
+                         montage_images: dict[str, Path] | None = None) -> dict:
+    """Embed, cluster per algorithm, characterize clusters, validate vs pseudo-labels, plot.
+
+    If `montage_images` maps face id -> image path, also writes a per-cluster face montage
+    for the first (primary) algorithm.
+    """
     out = ensure_dir(out_dir)
     fig_dir = ensure_dir(out / "figures")
     emb = extractor.extract(assets)
@@ -64,8 +69,11 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
     age_truth = np.array([_age_bucket(attrs.get(i, {}).get("age", 0.0)) for i in emb.ids])
 
     results: dict[str, dict] = {}
+    primary_labels = None
     for algo in algorithms:
         res = cluster(X, algo, k_min, k_max, seed)
+        if primary_labels is None:
+            primary_labels = res.labels
         row = {"n_clusters": res.n_clusters, **M.internal_metrics(X, res.labels)}
         if attrs:
             row.update({f"gender_{k}": v for k, v in
@@ -79,5 +87,11 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
     metric_table_png({a: {k: v for k, v in r.items() if isinstance(v, float)}
                       for a, r in results.items() if not a.endswith("__profile")},
                      fig_dir / "arcface_metrics.png", title="Face clustering metrics")
+    if montage_images and primary_labels is not None:
+        sel = [(montage_images[i], int(primary_labels[j]))
+               for j, i in enumerate(emb.ids) if i in montage_images]
+        if sel:
+            cluster_montage([p for p, _ in sel], [lab for _, lab in sel],
+                            fig_dir / f"{emb.name}_clusters_montage.png")
     write_json(results, out / f"{emb.name}_results.json")
     return results

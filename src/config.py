@@ -41,7 +41,7 @@ class RenderCfg:
 
 @dataclass(frozen=True)
 class PointSamplingCfg:
-    n_points: int = 8192
+    n_points: int = 1024
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ class DinoCfg:
 
 @dataclass(frozen=True)
 class PointMAECfg:
-    checkpoint: str = "vendor/Point-MAE/checkpoints/pretrain.pth"
+    checkpoint: str = "checkpoints/point_mae_pretrain.pth"
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class PartACfg:
 @dataclass(frozen=True)
 class InsightFaceCfg:
     model_name: str = "buffalo_l"
-    det_size: int = 640
+    det_size: int = 320
 
 
 @dataclass(frozen=True)

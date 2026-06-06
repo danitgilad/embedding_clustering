@@ -66,12 +66,17 @@ def _run_part_a(cfg, stage: str) -> None:
                          [tuple(v) for v in cfg.part_a.render.views])
     if stage in ("extract", "cluster", "all"):
         import dataclasses
+
+        from src.utils.io import sanitize_id
         umap_cfg = dataclasses.asdict(cfg.reduce.umap)
+        # front-view render per asset, for the per-cluster montage
+        montage = {a.id: render_dir / f"{sanitize_id(a.id)}_v0.png" for a in assets}
         for ext in A.build_extractors(cfg, render_dir):
             res = A.run_clustering_stage(
                 ext, assets, out, cfg.part_a.clustering.algorithms,
                 cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max,
-                cfg.reduce.preprocess, cfg.reduce.pca_components, umap_cfg, cfg.seed)
+                cfg.reduce.preprocess, cfg.reduce.pca_components, umap_cfg, cfg.seed,
+                montage_images=montage)
             log.info("Part A %s: %s", ext.name, res)
 
 
@@ -96,7 +101,8 @@ def _run_part_b(cfg, stage: str) -> None:
             ext, assets, out, cfg.part_b.clustering.algorithms,
             cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
             cfg.reduce.preprocess, cfg.reduce.pca_components,
-            dataclasses.asdict(cfg.reduce.umap), cfg.seed)
+            dataclasses.asdict(cfg.reduce.umap), cfg.seed,
+            montage_images={a.id: a.path for a in assets})
         log.info("Part B: %s", {k: v for k, v in res.items() if not k.endswith("__profile")})
 
 

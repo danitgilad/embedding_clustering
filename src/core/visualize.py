@@ -45,12 +45,21 @@ def metric_table_png(rows: Mapping[str, Mapping[str, float]], out_path: str | Pa
 
 
 def cluster_montage(image_paths: Sequence[str | Path], labels: np.ndarray,
-                    out_path: str | Path, thumb_px: int = 96) -> Path:
-    """Grid of thumbnails grouped by cluster (one row per cluster). Save PNG."""
+                    out_path: str | Path, thumb_px: int = 96,
+                    max_per_cluster: int = 12) -> Path:
+    """Grid of thumbnails grouped by cluster (one row per cluster). Save PNG.
+
+    Shows at most `max_per_cluster` examples per cluster so the montage stays readable for
+    large clusters (cluster label -1, HDBSCAN noise, is skipped).
+    """
     out_path = Path(out_path)
     by_cluster: dict[int, list[Path]] = {}
     for p, lab in zip(image_paths, labels):
-        by_cluster.setdefault(int(lab), []).append(Path(p))
+        if int(lab) == -1:
+            continue
+        bucket = by_cluster.setdefault(int(lab), [])
+        if len(bucket) < max_per_cluster:
+            bucket.append(Path(p))
     rows = sorted(by_cluster)
     ncols = max(len(v) for v in by_cluster.values())
     fig, axes = plt.subplots(len(rows), ncols,

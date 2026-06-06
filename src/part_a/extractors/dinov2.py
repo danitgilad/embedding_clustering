@@ -62,4 +62,6 @@ class DINOv2Extractor:
             per_view = np.stack([self._embed_image(p) for p in views])
             vecs.append(per_view.mean(axis=0))
             ids.append(asset.id)
+        if not vecs:
+            raise ValueError("DINOv2 produced no embeddings (no renders found for any asset)")
         return Embeddings(np.vstack(vecs), ids, self.name)

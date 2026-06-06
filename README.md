@@ -60,7 +60,7 @@ bash scripts/setup_encoders.sh            # downloads the Point-MAE pretrain che
 ```
 
 Notes:
-- **Pretrained weights download on first use**: DINOv2 (`facebook/dinov2-base`) and CLIP via
+- **Pretrained weights download on first use**: DINOv2 (`facebook/dinov2-base`) via
   HuggingFace; InsightFace `buffalo_l` via the insightface model zoo. Only the Point-MAE
   checkpoint is fetched explicitly (`setup_encoders.sh`).
 - **Point-MAE runs CPU-only here.** The upstream repo couples its grouping to CUDA ops
