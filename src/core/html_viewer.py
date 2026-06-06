@@ -15,21 +15,25 @@ from pathlib import Path
 import numpy as np
 
 
-def image_to_data_uri(path: str | Path, max_px: int = 96) -> str:
-    """Downscale an image so its long side is <= max_px; return a base64 PNG data URI.
+def image_to_data_uri(path: str | Path, max_px: int = 96, fmt: str = "png") -> str:
+    """Downscale an image so its long side is <= max_px; return a base64 data URI.
 
-    Returns "" if the file is missing (the viewer then renders that point thumbnail-less).
+    fmt "png" preserves transparency (use for the glasses renders); "jpeg" is far smaller for
+    photos (use for the face thumbnails — keeps the 500-point viewer small). Returns "" if the
+    file is missing (the viewer then renders that point thumbnail-less).
     """
     from PIL import Image
 
     p = Path(path)
     if not p.exists():
         return ""
-    img = Image.open(p).convert("RGBA")
+    is_jpeg = fmt.lower() in ("jpeg", "jpg")
+    img = Image.open(p).convert("RGB" if is_jpeg else "RGBA")
     img.thumbnail((max_px, max_px), Image.LANCZOS)
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    img.save(buf, format="JPEG" if is_jpeg else "PNG", **({"quality": 80} if is_jpeg else {}))
+    mime = "jpeg" if is_jpeg else "png"
+    return f"data:image/{mime};base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 _TAB10 = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",

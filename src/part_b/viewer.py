@@ -47,7 +47,7 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
             raw = json.loads(attr_file.read_text())
             hover_meta = {i: {"age": f"{a['age']:.0f}", "gender": a["gender"],
                               "pose_yaw": f"{a['pose_yaw']:.0f}"} for i, a in raw.items()}
-    thumbs = [image_to_data_uri(faces_dir / f"{i}.jpg", max_px=96) for i in ids]
+    thumbs = [image_to_data_uri(faces_dir / f"{i}.jpg", max_px=96, fmt="jpeg") for i in ids]
     html = build_viewer_html(
         projections, ids, thumbs, hover_meta=hover_meta or None,
         title="Part B — Faces: attribute clusters",
