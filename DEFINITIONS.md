@@ -6,50 +6,50 @@
 
 ## Global / Project-structure requirements
 
-- [ ] Delivered as a **well-structured Python project** — NOT notebooks, NOT flat scripts.
-- [ ] `src/` directory with meaningful separation of concerns, using `__init__.py` modules.
+- [x] Delivered as a **well-structured Python project** — NOT notebooks, NOT flat scripts.
+- [x] `src/` directory with meaningful separation of concerns, using `__init__.py` modules.
       (Does NOT need to be an installable package.)
-- [ ] Clear entry point: `main.py` and/or a CLI (`argparse`) that runs each part.
-- [ ] Configuration separated from logic — **no hardcoded paths scattered** through code.
-- [ ] `requirements.txt` listing all dependencies (reproducible setup).
-- [ ] `README.md` with:
-  - [ ] Setup & installation instructions.
-  - [ ] How to run each part of the assignment.
-  - [ ] Summary of approach, findings, and key decisions for each part.
-- [ ] Proper **logging** — no bare `print()` for operational output.
-- [ ] Meaningful function / class / module names.
-- [ ] Docstrings and type hints (encouraged → we treat as expected).
+- [x] Clear entry point: `main.py` and/or a CLI (`argparse`) that runs each part.
+- [x] Configuration separated from logic — **no hardcoded paths scattered** through code.
+- [x] `requirements.txt` listing all dependencies (reproducible setup).
+- [x] `README.md` with:
+  - [x] Setup & installation instructions.
+  - [x] How to run each part of the assignment.
+  - [x] Summary of approach, findings, and key decisions for each part.
+- [x] Proper **logging** — no bare `print()` for operational output.
+- [x] Meaningful function / class / module names.
+- [x] Docstrings and type hints (encouraged → we treat as expected).
 
 ## Part A — Unsupervised Clustering of 3D Assets (glasses)
 
 **Objective:** cluster the `.glb` glasses by geometric & visual similarity. No single
 correct answer; justification matters as much as result.
 
-- [ ] **Dataset exploration**: load `.glb` files from `assets/`; examine internal
+- [x] **Dataset exploration**: load `.glb` files from `assets/`; examine internal
       structure (mesh components, materials organization).
-- [ ] **Feature extraction — at least two types:**
-  - [ ] One **2D visual feature** derived from **rendered images** of the assets.
+- [x] **Feature extraction — at least two types:**
+  - [x] One **2D visual feature** derived from **rendered images** of the assets.
         (Decision: render from the **triangulated mesh**, not a point cloud.)
-  - [ ] One **3D geometric feature** computed **directly from the mesh** (no rendering).
-  - [ ] Analyze feature distributions and discriminative properties.
-- [ ] **Clustering analysis**: apply clustering / unsupervised techniques; compare
+  - [x] One **3D geometric feature** computed **directly from the mesh** (no rendering).
+  - [x] Analyze feature distributions and discriminative properties.
+- [x] **Clustering analysis**: apply clustering / unsupervised techniques; compare
       expressiveness of the different feature types and how each affects clusters.
-- [ ] **Visualization & reporting**: visualize clusters; summarize similarities found;
+- [x] **Visualization & reporting**: visualize clusters; summarize similarities found;
       document process, challenges, observations in README.
-- [ ] Output visualizations saved as **image files**.
+- [x] Output visualizations saved as **image files**.
 
 ## Part B — Unsupervised Classification of Face Images via Pretrained Embeddings
 
 **Objective:** cluster/analyze AI-generated faces using embeddings from a pretrained model.
 
-- [ ] **Dataset creation**: programmatically generate & save faces locally from
+- [x] **Dataset creation**: programmatically generate & save faces locally from
       thispersondoesnotexist.com (or equivalent). Document generation approach,
       dataset size, preprocessing.
-- [ ] **Pretrained model selection**: choose a suitable pretrained model
+- [x] **Pretrained model selection**: choose a suitable pretrained model
       (classification / detection / segmentation); justify choice in README.
-- [ ] **Embedding extraction**: feed dataset through model, extract a representative
+- [x] **Embedding extraction**: feed dataset through model, extract a representative
       embedding per image.
-- [ ] **Feature analysis & classification**: analyze embeddings (properties, patterns);
+- [x] **Feature analysis & classification**: analyze embeddings (properties, patterns);
       apply clustering / unsupervised techniques; evaluate and **iterate** to improve.
 
 ## Evaluation criteria (graded dimensions)
@@ -66,12 +66,12 @@ correct answer; justification matters as much as result.
 
 ## Deliverables checklist
 
-- [ ] zip archive **or** git repo.
-- [ ] Structured Python project (not notebooks/flat scripts).
-- [ ] `README.md` (setup, run, approach, findings).
-- [ ] `requirements.txt`.
-- [ ] Output visualizations saved as image files.
-- [ ] `assets/` folder **EXCLUDED** from submission (they have the data).
+- [x] zip archive **or** git repo.
+- [x] Structured Python project (not notebooks/flat scripts).
+- [x] `README.md` (setup, run, approach, findings).
+- [x] `requirements.txt`.
+- [x] Output visualizations saved as image files.
+- [x] `assets/` folder **EXCLUDED** from submission (they have the data).
 
 ## Project-specific decisions (ours, agreed during brainstorm)
 

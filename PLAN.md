@@ -8,10 +8,11 @@
 
 ## Current status
 
-**Phase:** All code complete (Tasks 0.1–4.1) on branch `feature/implementation`, fast suite
-34 passed / 3 @slow deselected, every task two-stage-reviewed. REMAINING: Task 4.3 (heavy
-end-to-end run on elem-danit1 — resolves deferred Point-MAE repo internals + checkpoint URL,
-produces real embeddings/figures), Task 4.4 (README from real results), Task 4.5 (acceptance).
+**Phase:** COMPLETE through Task 4.4. Tasks 0.1–4.4 done on branch `feature/implementation`.
+Box e2e run succeeded (Part A DINOv2 vs Point-MAE; Part B 500 faces → gender+age clusters).
+DEFINITIONS.md all 30 boxes ticked. README written from real results; figures in reports/.
+Fast suite 34 passed / 3 @slow deselected; @slow (real DINOv2/Point-MAE/ArcFace) pass on box.
+REMAINING (Task 4.5): final whole-project review + finishing-the-branch (merge/PR decision).
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
 **Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)
