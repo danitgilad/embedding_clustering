@@ -47,7 +47,8 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
         title="Part A — 3D glasses: 2D-vs-3D feature clusters",
         intro=("Each point is one glasses asset, shown as its rendered thumbnail on a "
                "cluster-coloured card. Buttons switch the feature/encoder. Hover for id."),
-        always_show_thumbs=True, page_title="Part A — Glasses Cluster Viewer")
+        always_show_thumbs=True, thumb_scale=2.0,
+        page_title="Part A — Glasses Cluster Viewer")
     out_html = out_dir / "viewer.html"
     out_html.write_text(html)
     log.info("Wrote %s", out_html)

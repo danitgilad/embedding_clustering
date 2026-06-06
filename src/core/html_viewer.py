@@ -51,7 +51,8 @@ def _fmt(v: object) -> str:
         return str(v)
 
 
-def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool) -> str:
+def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool,
+                 thumb_scale: float = 1.0) -> str:
     """One Plotly figure (JSON spec) for a single encoder. customdata=[id, cluster, thumb, meta]."""
     import plotly.graph_objects as go
 
@@ -93,8 +94,9 @@ def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool) 
                                x0=xi - s / 2, x1=xi + s / 2, y0=yi - s / 2, y1=yi + s / 2,
                                fillcolor=col, opacity=0.45, line=dict(color=col, width=2),
                                layer="below"))
+            isz = s * thumb_scale   # enlarge the rendered image without growing the card
             images.append(dict(source=thumbs[j], xref="x", yref="y", x=xi, y=yi,
-                               sizex=s, sizey=s, xanchor="center", yanchor="middle",
+                               sizex=isz, sizey=isz, xanchor="center", yanchor="middle",
                                sizing="contain", layer="above"))
     fig.update_layout(width=960, height=760, plot_bgcolor="#f8f8f8",
                       xaxis=dict(title="UMAP 1", zeroline=False),
@@ -131,7 +133,7 @@ def _metrics_table(projections: dict) -> str:
 
 def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list[str],
                       hover_meta: dict[str, dict] | None, *, title: str, intro: str,
-                      always_show_thumbs: bool,
+                      always_show_thumbs: bool, thumb_scale: float = 1.0,
                       page_title: str = "Embedding Cluster Viewer") -> str:
     """Render the full self-contained explorer HTML.
 
@@ -139,9 +141,11 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
     ids/thumbs: length-n, aligned to every projection's row order.
     hover_meta: optional {id: {field: value}} shown in the hover tooltip.
     always_show_thumbs: True places thumbnails on the plot (small sets); False = hover-only.
+    thumb_scale: multiplier on the always-visible thumbnail image size (card stays fixed).
     """
     names = list(projections)
-    specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs)
+    specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs,
+                             thumb_scale)
              for n in names}
     specs_js = ",\n".join(f"'{n}': {s}" for n, s in specs.items())
     keys_js = ", ".join(f"'{n}'" for n in names)
