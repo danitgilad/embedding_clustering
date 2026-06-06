@@ -134,7 +134,9 @@ the 2D feature is the more expressive signal on this set. **n = 14 is small, so 
 are illustrative/relative, not absolute.**
 
 **Figures** (`reports/part_a/`): `dinov2_kmeans_umap.png`, `point_mae_kmeans_umap.png`
-(UMAP scatter coloured by cluster), and `*_metrics.png` (metric tables).
+(UMAP scatter coloured by cluster), `*_metrics.png` (metric tables), and
+`*_clusters_montage.png` — thumbnail grids of the actual glasses grouped by cluster, which
+make the appearance-based grouping directly inspectable.
 
 ---
 
@@ -184,7 +186,8 @@ Observations:
   labelled noise), which is the honest signature of a continuous space rather than a bug.
 
 **Figures** (`reports/part_b/`): `arcface_kmeans_umap.png` (clusters), `arcface_metrics.png`,
-plus the agglomerative/hdbscan scatters. Per-cluster profiles are in
+`arcface_clusters_montage.png` (sample faces per cluster — the gender/age grouping is visible
+at a glance), plus the agglomerative/hdbscan scatters. Per-cluster profiles are in
 `reports/part_b/arcface_results.json`.
 
 ---
