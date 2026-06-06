@@ -12,6 +12,8 @@ import base64
 import io
 from pathlib import Path
 
+import numpy as np
+
 
 def image_to_data_uri(path: str | Path, max_px: int = 96) -> str:
     """Downscale an image so its long side is <= max_px; return a base64 PNG data URI.
@@ -29,8 +31,6 @@ def image_to_data_uri(path: str | Path, max_px: int = 96) -> str:
     img.save(buf, format="PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
-
-import numpy as np
 
 _TAB10 = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
           "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
@@ -78,7 +78,7 @@ def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool) 
     shapes, images = [], []
     if always_show_thumbs:
         xs, ys = coords[:, 0], coords[:, 1]
-        span = float(max(xs.ptp(), ys.ptp())) or 1.0
+        span = float(max(np.ptp(xs), np.ptp(ys))) or 1.0
         s = 0.18 * span
         for j in range(len(coords)):
             if not thumbs[j]:
