@@ -65,6 +65,8 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
     coords = umap_2d(X, umap_cfg["n_neighbors"], umap_cfg["min_dist"], umap_cfg["metric"], seed)
 
     attrs = getattr(extractor, "attributes", {})
+    if attrs:
+        write_json(attrs, ensure_dir(out_dir) / f"{emb.name}_attributes.json")
     gender_truth = np.array([attrs.get(i, {}).get("gender", "?") for i in emb.ids])
     age_truth = np.array([_age_bucket(attrs.get(i, {}).get("age", 0.0)) for i in emb.ids])
 
