@@ -100,11 +100,12 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
                         M.external_metrics(res.labels, age_truth).items()})
             results[f"{algo}__profile"] = characterize_clusters(res.labels, emb.ids, attrs)
         results[algo] = row
-        scatter_2d(coords, res.labels, fig_dir / f"arcface_{algo}_umap.png",
-                   title=f"arcface · {algo} (k={res.n_clusters})")
+        scatter_2d(coords, res.labels, fig_dir / f"{emb.name}_{algo}_umap.png",
+                   title=f"{emb.name} · {algo} (k={res.n_clusters})")
     metric_table_png({a: {k: v for k, v in r.items() if isinstance(v, float)}
                       for a, r in results.items() if not a.endswith("__profile")},
-                     fig_dir / "arcface_metrics.png", title="Face clustering metrics")
+                     fig_dir / f"{emb.name}_metrics.png",
+                     title=f"{emb.name} face clustering metrics")
     if montage_images and primary_labels is not None:
         sel = [(montage_images[i], int(primary_labels[j]))
                for j, i in enumerate(emb.ids) if i in montage_images]
