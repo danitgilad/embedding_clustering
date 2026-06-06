@@ -112,6 +112,16 @@ Point-MAE pretrain checkpoint URL + confirm Point_MAE class API, `setup_encoders
       never written to any file. Token was exposed in chat → user to revoke/rotate it.
       `.gitignore` excludes `assets/` (task says exclude from submission), `outputs/`, `data/`,
       `vendor/`, venvs, caches, `.remember/`.
+- D17: **Point-MAE runs CPU-only via a self-contained pure-torch reimplementation.**
+      Upstream Point-MAE is CUDA-coupled at import time (knn_cuda, pointnet2 FPS, chamfer
+      extension) so it can't run CPU as-is. Solution: `src/part_a/extractors/_point_mae_backbone.py`
+      reimplements only the encoder forward path (PointNet Encoder + ViT blocks, all pure torch)
+      with torch FPS+KNN grouping, and loads the official `module.MAE_encoder.*` pretrained
+      weights (348MB pretrain.pth). Submodule names mirror upstream so weights load by name
+      (verified 0 missing/unexpected). Global feature = concat(max,mean) over group tokens = 768-d.
+      `setup_encoders.sh` now ONLY downloads the checkpoint (no clone/CUDA build) → more
+      reproducible. n_points=1024 (matches pretrain). This SUPERSEDES the plan's "import vendored
+      repo" approach (Task 2.4). Commit e69e890.
 - _(brainstorm complete & spec written; next: user reviews spec, then writing-plans)_
 
 ---
@@ -182,6 +192,11 @@ _(append-only; what was actually built/done, with file paths)_
   to box run (Task 4.3/2.4 real). FOLLOW-UPS (non-blocking, do in box-run hardening):
   guard np.vstack([]) when all assets skipped (dinov2+point_mae); tighten run_clustering_stage
   return type to dict[str,dict].
+- 2026-06-06: **Task 4.3 IN PROGRESS** (box run). Env built on elem-danit1
+  (/mnt/workspace/projects/embedding_clustering, CPU torch 2.3.1+cpu, all deps). Assets seeded
+  (byte-identical to local). Point-MAE CPU backbone written + verified (slow tests pass: 768-d).
+  Full driver (part-a all → part-b all) launched detached (PID 59524, run.log, run_state/.done
+  markers). Polling for completion. Point-MAE checkpoint at checkpoints/point_mae_pretrain.pth.
 - 2026-06-06: **Part B DONE** (Tasks 3.1–3.3), APPROVED. Commits f91835a (generate),
   59d4b6b (arcface), 8001236 (pipeline). 32 passed, 3 @slow deselected. arcface imports
   insightface/cv2 lazily; raises on all-skipped (no empty vstack); _gender handles .sex/.gender
