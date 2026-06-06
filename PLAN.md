@@ -1,0 +1,142 @@
+# Project Plan & Session-Restore Log
+
+> Living document. Updated continuously so the session can be **restored after a crash**.
+> If you're a fresh session: read this top-to-bottom, then `DEFINITIONS.md`, then `task.md`,
+> and resume from the "Current status" marker below.
+
+---
+
+## Current status
+
+**Phase:** Design complete & spec written. Awaiting user review of the spec before
+writing the implementation plan.
+**Date:** 2026-06-06
+**Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
+**Next action:** User reviews spec → then invoke `writing-plans` skill to produce the
+implementation plan. First impl step will be: verify elem-danit1 outbound internet (D11).
+**Note:** not a git repo yet — spec not committed (offer `git init`).
+
+---
+
+## Key facts / environment
+
+- Working dir: `/home/danit/projects/senior_task` (NOT a git repo yet).
+- Data: 14 `.glb` glasses meshes in `assets/` (~1.3–4 MB each). `assets/` is EXCLUDED
+  from final submission.
+- Two independent tasks: **Part A** (3D glasses clustering) + **Part B** (face-image
+  embedding clustering). See `DEFINITIONS.md` for the full acceptance checklist.
+
+### Compute / infra
+- Heavy compute → **elem-danit1** (A100 GPU, 12 CPU, ~83GB RAM) over SSH, via the
+  `run-on-elem-danit1` skill. Resilient to VPN/SSH drops & box preemption.
+- GCS/Vertex available there (project `zeekit-deep`) via login-shell ADC.
+
+### Decisions locked in
+- D1: Render Part-A images from the **triangulated mesh** (not point cloud).
+      Source of insight: `~/projects/umap_viewer/glasses_3d_umap`.
+- D2: **Fresh, clean build** — standalone project. Borrow proven techniques/snippets
+      from `glasses_3d_umap` (mesh render via matplotlib Poly3DCollection, elem-danit1
+      workflow, metric choices) but write self-contained code structured around the
+      assignment's 2D-vs-3D feature-type comparison. No dependency on the old project.
+- D3: Part-A **2D visual feature** = multi-view renders → frozen pretrained vision
+      encoder, pooled to one vector per asset. **Pluggable encoder interface**:
+      **DINOv2 = primary**; **CLIP** and **PE-Core** (Meta Perception Encoder,
+      `facebook/PE-Core-*`) added if time allows, to enrich the feature comparison.
+- D4: Part-A comparison axis is **2D-render-derived vs 3D-mesh-derived features**
+      (NOT learned-vs-handcrafted — that was a mis-framing; task only contrasts
+      "2D visual from renders" vs "3D geometric from mesh"). Therefore the **3D feature
+      = a learned point-cloud encoder** on points sampled from the triangulated mesh
+      surface (no rendering). Apples-to-apples: learned 2D embedding vs learned 3D
+      embedding, modality being the only variable. Handcrafted geometric descriptors
+      (bbox ratios, solidity, PCA elongation, D2 histogram) = optional enrichment if
+      time allows. The old `glasses_3d_umap` project may overlap freely, but we assume
+      NO additional knowledge/setup from it — this project stands alone.
+- D5: Part-A **3D encoder = Point-MAE** (self-supervised, pure-geometry; mirrors DINOv2).
+      Points sampled from the triangulated mesh surface. OpenShape/ULIP-2 optional secondary
+      if time allows. Encoders need a documented bootstrap (custom CUDA ops + checkpoints) +
+      pinned requirements.txt; heavy encode runs on elem-danit1 A100.
+- D6: Part-B model = **InsightFace `buffalo_l` (ArcFace)**. Cluster the 512-D ArcFace
+      embedding; use the model's auxiliary **age/gender/pose + landmarks** to interpret &
+      validate clusters with evidence. Clean pip install (ONNX). Key insight: faces are
+      AI-generated → identity clustering is meaningless, so clusters surface ATTRIBUTES.
+      Optional DINOv2 generic comparison if time allows (reuses Part A code).
+- D7: Part-B dataset ~**500 faces** from thispersondoesnotexist.com (count is a
+      config/CLI param). Generation: polite rate-limited GET loop + hash-dedup;
+      InsightFace detect+align per face. Preprocessing documented.
+- D8: **Methodology = right-tool-per-part.** Preprocess (standardize/L2-norm → optional
+      PCA). Cluster: KMeans (silhouette-swept k) + Agglomerative (dendrogram) for both;
+      HDBSCAN added for Part B. Eval: internal metrics (cosine silhouette, Davies–Bouldin,
+      Calinski–Harabasz) for both; Part B also validated vs InsightFace age/gender
+      pseudo-labels (NMI/ARI/purity). Viz: UMAP scatter (by cluster & attribute), per-cluster
+      montages, feature-distribution plots, cross-feature-type metric comparison table.
+- D9: **Architecture = shared part-agnostic core + per-part front-ends.** A
+      `FeatureExtractor` Protocol is the key seam; downstream (reduce→cluster→eval→viz) is
+      identical across extractors so comparisons are fair. Embeddings cached as `.npy`+ids
+      keyed by extractor name → expensive GPU encode decoupled from cheap local analysis.
+      Layout: `main.py` argparse CLI (per-part + per-stage subcommands), `config/default.yaml`
+      + typed-dataclass loader (no scattered paths), one-file-per-encoder under `extractors/`,
+      pytest in `tests/`. See Section 2 of the brainstorm for the full tree.
+- D10: **Documentation is continuous, not deferred.** Standing rule for the whole build:
+      (a) append to PLAN.md Progress log after every stage/file; (b) update README sections
+      incrementally as each part lands (not a big-bang at the end); (c) docstrings + type
+      hints on every public function/class/module; (d) tick DEFINITIONS.md boxes as criteria
+      are met; (e) log decisions here as they happen. README must always reflect current state.
+- D11: **Run EVERYTHING on elem-danit1** (render, all encoders, Part-B face download,
+      ArcFace, reduce/cluster/metrics/viz). Local machine is fragile/gets stuck → used only
+      as a control terminal (edit code, issue commands, pull back final figures/HTML to view).
+      Mirrors the old project's "everything executes on the box" workflow.
+      - Part-B download is a plain HTTP GET (JPEG) → works headless on the box if it has
+        outbound internet. **FIRST implementation step: verify box outbound internet to the
+        TPDNE endpoint** (quick check via run-on-elem-danit1 skill).
+        Fallback if firewalled: download faces locally (network-only, light) + sync JPEGs up.
+      - Project stays fully portable; box is the default workflow, not a hard dependency.
+- D12: **Error handling = resilient batches, never silent.** Per-item try/except + a
+      reported failure summary; real misconfig fails loud; no problem-hiding fallbacks.
+      GLB loader degrades gracefully on missing colors/multi-mesh (warns, skips corrupt).
+      Face-gen retries w/ backoff, content-hash dedup, drops 0/>1-face images (counts them).
+      Embedding store hard-fails on (N,D)↔ids misalignment.
+- D13: **Logging** via one `logging_setup.py` (level via `--log-level`), timestamped,
+      no bare print(); per-stage counts+timings; run log copied under `outputs/`.
+- D14: **Testing (pytest)** targets deterministic part-agnostic logic: mesh_io,
+      embedding_store (incl. id-alignment guard), cluster (k-recovery on blobs), metrics,
+      generate (mocked requests). Encoders tested via a fake FeatureExtractor; real-encoder
+      runs are optional @slow smoke tests (no GPU/network in default suite).
+- D15: **Optional encoders/descriptors DEFERRED** until the two primaries per part
+      (DINOv2 + Point-MAE for A; InsightFace for B) produce a working end-to-end pipeline.
+      See spec §12. Initial build = primaries + complete working pipeline first.
+- D16: **Git remote** = `github.com/danitgilad/embedding_clustering` (user's personal GH).
+      Remote configured WITHOUT the token in the URL; token used only for one-off pushes and
+      never written to any file. Token was exposed in chat → user to revoke/rotate it.
+      `.gitignore` excludes `assets/` (task says exclude from submission), `outputs/`, `data/`,
+      `vendor/`, venvs, caches, `.remember/`.
+- _(brainstorm complete & spec written; next: user reviews spec, then writing-plans)_
+
+---
+
+## Open questions (brainstorm)
+
+- [ ] Part A 2D-visual feature: which approach? (render → CNN/CLIP embedding vs.
+      classic image descriptors)
+- [ ] Part A 3D-geometric feature: which descriptor(s)?
+- [ ] Part B pretrained model: which one? (face-recognition embedding vs. generic
+      vision backbone)
+- [ ] Part B dataset size & generation strategy.
+- [ ] Clustering algorithm(s) + how we compare feature types.
+- [ ] Where compute runs (local vs. elem-danit1) per stage.
+
+---
+
+## Decision log
+_(chronological; append as we decide)_
+
+- 2026-06-06: Created `DEFINITIONS.md` + `PLAN.md`. Entered brainstorming.
+
+---
+
+## Progress log
+_(append-only; what was actually built/done, with file paths)_
+
+- 2026-06-06: Project inspected; `task.md` + 14 `.glb` assets present. No code yet.
+- 2026-06-06: Created DEFINITIONS.md + PLAN.md. Brainstormed design (D1–D14).
+- 2026-06-06: Wrote design spec → `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`.
+  Spec self-review passed. Awaiting user review.

@@ -1,0 +1,33 @@
+# --- Assignment data (task says assets/ must NOT be in the submission) ---
+assets/
+
+# --- Generated artifacts ---
+outputs/
+data/
+
+# --- Heavy / box-only encoder repos & checkpoints ---
+vendor/
+*.ckpt
+*.pth
+*.onnx
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- Virtualenvs ---
+.venv/
+venv/
+env/
+
+# --- Tooling / session state (not part of the project) ---
+.remember/
+.DS_Store
+
+# --- Logs ---
+*.log
