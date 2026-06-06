@@ -96,17 +96,16 @@ def _run_part_b(cfg, stage: str) -> None:
     if stage in ("extract", "cluster", "all"):
         import dataclasses
         from src.core.types import Asset
-        from src.part_b.extractors.arcface import ArcFaceExtractor
         assets = [Asset(id=p.stem, path=p) for p in sorted(data_dir.glob("*.jpg"))]
-        ext = ArcFaceExtractor(cfg.part_b.insightface.model_name,
-                               cfg.part_b.insightface.det_size)
-        res = B.run_clustering_stage(
-            ext, assets, out, cfg.part_b.clustering.algorithms,
-            cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
-            cfg.reduce.preprocess, cfg.reduce.pca_components,
-            dataclasses.asdict(cfg.reduce.umap), cfg.seed,
-            montage_images={a.id: a.path for a in assets})
-        log.info("Part B: %s", {k: v for k, v in res.items() if not k.endswith("__profile")})
+        for ext in B.build_extractors(cfg):
+            res = B.run_clustering_stage(
+                ext, assets, out, cfg.part_b.clustering.algorithms,
+                cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
+                cfg.reduce.preprocess, cfg.reduce.pca_components,
+                dataclasses.asdict(cfg.reduce.umap), cfg.seed,
+                montage_images={a.id: a.path for a in assets})
+            log.info("Part B %s: %s", ext.name,
+                     {k: v for k, v in res.items() if not k.endswith("__profile")})
     if stage in ("viewer", "all"):
         from src.part_b.viewer import build_part_b_viewer
         build_part_b_viewer(cfg, out, data_dir)

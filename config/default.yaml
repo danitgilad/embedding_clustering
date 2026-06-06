@@ -42,6 +42,9 @@ part_b:
   tpdne_url: https://thispersondoesnotexist.com/
   request_delay_s: 1.0
   max_retries: 5
+  encoders: [arcface, dinov2_generic]
+  dinov2_generic:
+    hf_model: facebook/dinov2-base
   insightface:
     model_name: buffalo_l
     det_size: 320                       # TPDNE faces fill the frame; large det_size misses them

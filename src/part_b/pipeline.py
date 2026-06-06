@@ -23,6 +23,22 @@ from src.utils.io import ensure_dir, write_json
 log = logging.getLogger(__name__)
 
 
+def build_extractors(cfg):
+    """Instantiate Part B encoders in config order (arcface first = attribute source)."""
+    exts = []
+    for name in cfg.part_b.encoders:
+        if name == "arcface":
+            from src.part_b.extractors.arcface import ArcFaceExtractor
+            exts.append(ArcFaceExtractor(cfg.part_b.insightface.model_name,
+                                         cfg.part_b.insightface.det_size))
+        elif name == "dinov2_generic":
+            from src.part_b.extractors.dinov2_generic import DINOv2GenericExtractor
+            exts.append(DINOv2GenericExtractor(cfg.part_b.dinov2_generic.hf_model))
+        else:
+            raise ValueError(f"unknown Part B encoder {name!r}")
+    return exts
+
+
 def characterize_clusters(labels: np.ndarray, ids: Sequence[str],
                           attributes: dict[str, dict]) -> dict[int, dict]:
     """Per cluster: size, mean age, dominant gender, % dominant gender. Human-readable profile."""
