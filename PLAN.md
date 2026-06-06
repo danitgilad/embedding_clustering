@@ -86,9 +86,8 @@ outbound internet to TPDNE, Point-MAE checkpoint URL).
       as a control terminal (edit code, issue commands, pull back final figures/HTML to view).
       Mirrors the old project's "everything executes on the box" workflow.
       - Part-B download is a plain HTTP GET (JPEG) → works headless on the box if it has
-        outbound internet. **FIRST implementation step: verify box outbound internet to the
-        TPDNE endpoint** (quick check via run-on-elem-danit1 skill).
-        Fallback if firewalled: download faces locally (network-only, light) + sync JPEGs up.
+        outbound internet. ✅ VERIFIED 2026-06-06: box reaches TPDNE (548KB JPEG). No fallback
+        needed — faces download directly on the box.
       - Project stays fully portable; box is the default workflow, not a hard dependency.
 - D12: **Error handling = resilient batches, never silent.** Per-item try/except + a
       reported failure summary; real misconfig fails loud; no problem-hiding fallbacks.
@@ -148,3 +147,8 @@ _(append-only; what was actually built/done, with file paths)_
 - 2026-06-06: Wrote implementation plan → `docs/superpowers/plans/2026-06-06-embedding-clustering.md`.
   Phases: 0 infra/scaffold, 1 shared core, 2 Part A, 3 Part B, 4 CLI/integration/docs.
   TDD throughout; heavy encoders behind @slow + run on box. Self-review passed.
+- 2026-06-06: Started subagent-driven execution on branch `feature/implementation`.
+  **Task 0.1 DONE** (infra verified): elem-danit1 reachable passwordless, A100-40GB,
+  Python 3.10.12; TPDNE reachable from box (548KB JPEG); Point-MAE repo reachable
+  (github.com/Pang-Yatian/Point-MAE HEAD 7445a68). Point-MAE checkpoint URL: TBD — look up
+  from repo README during Task 2.4 setup (env POINT_MAE_CKPT_URL).
