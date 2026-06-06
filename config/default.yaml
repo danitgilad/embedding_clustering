@@ -1,0 +1,49 @@
+seed: 42
+
+paths:
+  assets_dir: assets
+  outputs_dir: outputs
+  data_dir: data
+
+reduce:
+  preprocess: [standardize, l2norm]   # applied in order before clustering
+  pca_components: null                # null = skip PCA
+  umap:
+    n_neighbors: 10
+    min_dist: 0.1
+    metric: cosine
+
+part_a:
+  encoders_2d: [dinov2]               # primary; optional later: clip, pe_core
+  encoders_3d: [point_mae]            # primary; optional later: openshape
+  render:
+    size_px: 512
+    supersample: 3
+    views:                            # [elevation, azimuth] degrees
+      - [80, -90]
+      - [20, -90]
+      - [20, 0]
+      - [20, 90]
+  point_sampling:
+    n_points: 8192
+  dinov2:
+    hf_model: facebook/dinov2-base
+  point_mae:
+    checkpoint: vendor/Point-MAE/checkpoints/pretrain.pth
+  clustering:
+    algorithms: [kmeans, agglomerative]
+    k_min: 2
+    k_max: 8
+
+part_b:
+  n_images: 500
+  tpdne_url: https://thispersondoesnotexist.com/
+  request_delay_s: 1.0
+  max_retries: 5
+  insightface:
+    model_name: buffalo_l
+    det_size: 640
+  clustering:
+    algorithms: [kmeans, agglomerative, hdbscan]
+    k_min: 2
+    k_max: 12
