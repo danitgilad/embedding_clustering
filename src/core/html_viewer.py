@@ -52,7 +52,7 @@ def _fmt(v: object) -> str:
 
 
 def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool,
-                 thumb_scale: float = 1.0) -> str:
+                 thumb_scale: float = 1.0, hover_thumbs=None) -> str:
     """One Plotly figure (JSON spec) for a single encoder. customdata=[id, cluster, thumb, meta]."""
     import plotly.graph_objects as go
 
@@ -70,7 +70,9 @@ def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool,
     for c in uniq:
         m = labels == c
         idx = np.where(m)[0]
-        cd = [[ids[j], int(c), thumbs[j], meta_str(ids[j])] for j in idx]
+        # hover image may differ from the on-plot image (e.g. coloured hover, grey on plot)
+        hth = hover_thumbs if hover_thumbs is not None else thumbs
+        cd = [[ids[j], int(c), hth[j], meta_str(ids[j])] for j in idx]
         fig.add_trace(go.Scatter(
             x=coords[m, 0].tolist(), y=coords[m, 1].tolist(), mode="markers",
             name=f"cluster {c} ({int(m.sum())})", legendgroup="c",
@@ -134,6 +136,7 @@ def _metrics_table(projections: dict) -> str:
 def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list[str],
                       hover_meta: dict[str, dict] | None, *, title: str, intro: str,
                       always_show_thumbs: bool, thumb_scale: float = 1.0,
+                      hover_thumbs: list[str] | None = None,
                       page_title: str = "Embedding Cluster Viewer") -> str:
     """Render the full self-contained explorer HTML.
 
@@ -145,7 +148,7 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
     """
     names = list(projections)
     specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs,
-                             thumb_scale)
+                             thumb_scale, hover_thumbs)
              for n in names}
     specs_js = ",\n".join(f"'{n}': {s}" for n, s in specs.items())
     keys_js = ", ".join(f"'{n}'" for n in names)
@@ -173,12 +176,12 @@ Calinski–Harabasz ↑; green = best):</p>{table}
 <div style="margin:8px 0">{btns}</div>{divs}
 <div id="tip" style="position:fixed;display:none;z-index:9;background:#fff;border:1px solid #ccc;
 border-radius:6px;padding:7px;box-shadow:2px 4px 14px rgba(0,0,0,.25);font:12px/1.4 sans-serif;
-text-align:center;max-width:160px"></div>
+text-align:center;max-width:300px"></div>
 <script>
 var S={{ {specs_js} }}, K=[{keys_js}], R={{}};
 function tip(el){{var t=document.getElementById('tip');
   el.on('plotly_hover',function(e){{var d=e.points[0].customdata;var h='';
-    if(d[2])h+='<img src="'+d[2]+'" style="max-width:140px;max-height:140px;display:block;margin:0 auto 4px">';
+    if(d[2])h+='<img src="'+d[2]+'" style="max-width:280px;max-height:280px;display:block;margin:0 auto 4px">';
     h+='<b>'+d[0]+'</b><br>cluster '+d[1]+(d[3]?'<br>'+d[3]:'');t.innerHTML=h;
     var b=e.points[0].bbox||{{}};t.style.left=((b.x1||0)+12)+'px';t.style.top=((b.y0||0)-8)+'px';t.style.display='block';}});
   el.on('plotly_unhover',function(){{t.style.display='none';}});}}

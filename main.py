@@ -59,11 +59,15 @@ def _run_part_a(cfg, stage: str) -> None:
     if stage in ("render", "all"):
         from src.part_a.mesh_io import load_glb, to_single_mesh
         from src.part_a.render import render_views
+        views = [tuple(v) for v in cfg.part_a.render.views]
         for a in assets:
             mesh = to_single_mesh(load_glb(a.path))
             render_views(mesh, a.id, render_dir, cfg.part_a.render.size_px,
-                         cfg.part_a.render.supersample,
-                         [tuple(v) for v in cfg.part_a.render.views])
+                         cfg.part_a.render.supersample, views)
+            # one colour-baked front-view render per asset, for the viewer's hover popup
+            color_mesh = to_single_mesh(load_glb(a.path), bake_texture_color=True)
+            render_views(color_mesh, a.id, render_dir / "colored", cfg.part_a.render.size_px,
+                         cfg.part_a.render.supersample, views[:1])
     if stage in ("extract", "cluster", "all"):
         import dataclasses
 

@@ -42,12 +42,18 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
         projections[npy.stem] = {"coords2d": coords, "labels": res.labels,
                                  "metrics": M.internal_metrics(X, res.labels)}
     thumbs = [image_to_data_uri(render_dir / f"{sanitize_id(i)}_v0.png", max_px=128) for i in ids]
+    # coloured renders (textures baked) used only in the larger hover popup; fall back to the
+    # grey on-plot thumbnail if a coloured render is missing.
+    colored_dir = render_dir / "colored"
+    hover_thumbs = [image_to_data_uri(colored_dir / f"{sanitize_id(i)}_v0.png", max_px=256)
+                    or thumbs[k] for k, i in enumerate(ids)]
     html = build_viewer_html(
         projections, ids, thumbs, hover_meta=None,
         title="Part A — 3D glasses: 2D-vs-3D feature clusters",
         intro=("Each point is one glasses asset, shown as its rendered thumbnail on a "
-               "cluster-coloured card. Buttons switch the feature/encoder. Hover for id."),
-        always_show_thumbs=True, thumb_scale=2.0,
+               "cluster-coloured card (grey on the plot). Hover a point for a larger, "
+               "colour render + its id. Buttons switch the feature/encoder."),
+        always_show_thumbs=True, thumb_scale=2.0, hover_thumbs=hover_thumbs,
         page_title="Part A — Glasses Cluster Viewer")
     out_html = out_dir / "viewer.html"
     out_html.write_text(html)

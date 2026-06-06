@@ -20,17 +20,29 @@ def load_glb(path: str | Path) -> trimesh.Scene | trimesh.Trimesh:
     return trimesh.load(str(path), process=False)
 
 
-def to_single_mesh(obj: trimesh.Scene | trimesh.Trimesh) -> trimesh.Trimesh:
+def to_single_mesh(obj: trimesh.Scene | trimesh.Trimesh,
+                   bake_texture_color: bool = False) -> trimesh.Trimesh:
     """Flatten a Scene into one Trimesh, APPLYING each node's scene-graph transform;
     pass a Trimesh through. Raises ValueError if there is no mesh geometry.
 
     Uses Scene.dump(concatenate=True) — NOT trimesh.util.concatenate — because the latter
     merges geometries in their local frames and drops the scene-graph node transforms.
+
+    bake_texture_color: when True, bake each geometry's texture into vertex colors
+    (visual.to_color()) before flattening, so the merged mesh carries the real material
+    colours. Used for the coloured hover renders; the default (False) leaves the mesh
+    uncoloured (the renderer then shades it grey).
     """
     if isinstance(obj, trimesh.Trimesh):
         return obj
     if not obj.geometry:
         raise ValueError("GLB contains no mesh geometry")
+    if bake_texture_color:
+        for geo in obj.geometry.values():
+            try:
+                geo.visual = geo.visual.to_color()
+            except Exception as exc:  # noqa: BLE001 - colour baking is best-effort
+                log.debug("texture->colour bake failed (%s); leaving uncoloured", exc)
     dumped = obj.dump(concatenate=True)
     if not isinstance(dumped, trimesh.Trimesh):
         raise ValueError("GLB did not concatenate to a single mesh")
