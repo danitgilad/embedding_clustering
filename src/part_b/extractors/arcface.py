@@ -2,7 +2,9 @@
 
 We cluster the embedding; the attributes (collected during extraction) are exposed via
 `.attributes` and later used as pseudo-labels to interpret/validate clusters. Images with
-zero or >1 detected face are skipped and counted.
+no detectable face are skipped and counted; when several faces are detected the largest
+(the main subject) is used. NOTE: thispersondoesnotexist faces fill the frame, so the
+detector needs a small det_size (~320) — a large det_size misses these big faces entirely.
 """
 from __future__ import annotations
 
@@ -45,7 +47,7 @@ class ArcFaceExtractor:
             self._app = app
 
     def extract(self, items: Sequence[Asset]) -> Embeddings:
-        """Detect + embed exactly one face per image; collect age/gender/pose attributes."""
+        """Detect + embed one face per image (the largest); collect age/gender/pose attributes."""
         self._ensure_app()
         import cv2
 
@@ -56,10 +58,11 @@ class ArcFaceExtractor:
                 self.skipped[asset.id] = "unreadable"
                 continue
             faces = self._app.get(img)
-            if len(faces) != 1:
-                self.skipped[asset.id] = f"{len(faces)} faces"
+            if not faces:
+                self.skipped[asset.id] = "no face"
                 continue
-            face = faces[0]
+            # Keep the largest face (main subject) if the detector returns spurious extras.
+            face = max(faces, key=lambda f: float((f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1])))
             vecs.append(np.asarray(face.normed_embedding, dtype=float))
             ids.append(asset.id)
             pose = getattr(face, "pose", None)

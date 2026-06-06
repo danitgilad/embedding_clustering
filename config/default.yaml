@@ -42,7 +42,7 @@ part_b:
   max_retries: 5
   insightface:
     model_name: buffalo_l
-    det_size: 640
+    det_size: 320                       # TPDNE faces fill the frame; large det_size misses them
   clustering:
     algorithms: [kmeans, agglomerative, hdbscan]
     k_min: 2
