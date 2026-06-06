@@ -107,6 +107,9 @@ def _run_part_b(cfg, stage: str) -> None:
             dataclasses.asdict(cfg.reduce.umap), cfg.seed,
             montage_images={a.id: a.path for a in assets})
         log.info("Part B: %s", {k: v for k, v in res.items() if not k.endswith("__profile")})
+    if stage in ("viewer", "all"):
+        from src.part_b.viewer import build_part_b_viewer
+        build_part_b_viewer(cfg, out, data_dir)
 
 
 def main(argv: list[str] | None = None) -> None:
