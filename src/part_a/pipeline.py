@@ -7,6 +7,7 @@ disk; cluster/viz run on the cached .npy anywhere.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
@@ -81,7 +82,6 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
         sel = [(montage_images[i], int(primary_labels[j]))
                for j, i in enumerate(emb.ids) if i in montage_images]
         if sel:
-            from collections import Counter
             sizes = Counter(int(l) for l in primary_labels)
             titles = {c: f"cluster {c} (n={n})" for c, n in sizes.items()}
             cluster_montage([p for p, _ in sel], [lab for _, lab in sel],
