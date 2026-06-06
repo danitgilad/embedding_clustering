@@ -8,13 +8,17 @@
 
 ## Current status
 
-**Phase:** Implementation plan written & self-reviewed. Awaiting user's choice of execution
-mode (subagent-driven vs inline).
+**Phase:** All code complete (Tasks 0.1–4.1) on branch `feature/implementation`, fast suite
+34 passed / 3 @slow deselected, every task two-stage-reviewed. REMAINING: Task 4.3 (heavy
+end-to-end run on elem-danit1 — resolves deferred Point-MAE repo internals + checkpoint URL,
+produces real embeddings/figures), Task 4.4 (README from real results), Task 4.5 (acceptance).
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
 **Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)
-**Next action:** Pick execution mode, then start at **Task 0.1** (verify elem-danit1 access,
-outbound internet to TPDNE, Point-MAE checkpoint URL).
+**Next action:** Task 4.3 — sync to elem-danit1, `pip install -r requirements.txt`, find
+Point-MAE pretrain checkpoint URL + confirm Point_MAE class API, `setup_encoders.sh`, run
+`part-a all` + `part-b all` as detached jobs, run `pytest -m slow`, pull figures back.
+**Branch not yet pushed** (PAT exposed → revoke; use SSH remote for future pushes).
 
 ---
 
@@ -184,3 +188,7 @@ _(append-only; what was actually built/done, with file paths)_
   version diffs. pytest.ini (Task 4.2) was done early. Minor cosmetic notes (a few missing
   type annots/docstrings on privates) — non-blocking.
   REMAINING: 4.1 CLI, 4.3 box e2e run, 4.4 README, 4.5 acceptance.
+- 2026-06-06: **Task 4.1 CLI DONE**, APPROVED (wiring cross-checked exact vs both pipeline
+  signatures). Commit d9e3072. `main.py` argparse: `part {part-a,part-b} stage {render,
+  generate,extract,cluster,all}` + --config/--log-level/--set/--n. Used dataclasses.asdict for
+  umap dict. 34 passed, 3 @slow deselected. **All 19 code tasks complete.** pytest.ini=Task4.2 done.
