@@ -142,21 +142,26 @@ labelled with the cluster's stats) are also written under `reports/` for quick a
 4. **Cluster** each embedding identically: standardize → L2-normalize → KMeans and
    Agglomerative, with *k* chosen by best cosine silhouette over k∈[2,8].
 
-**Findings.** Both feature types produce coherent clusters; the **2D render-based DINOv2
-feature separates the glasses more cleanly than the 3D Point-MAE feature**:
+**Findings.** All feature types produce coherent clusters; the **2D render-based DINOv2
+feature separates the glasses most cleanly**. Three encoders are compared (a second 2D
+encoder, CLIP, was added — see "Encoder comparison"):
 
 | Feature (KMeans)        | k | silhouette ↑ | Davies-Bouldin ↓ | Calinski-Harabasz ↑ |
 |-------------------------|---|--------------|------------------|---------------------|
 | **DINOv2 (2D render)**  | 7 | **0.479**    | **0.731**        | **4.369**           |
 | Point-MAE (3D mesh)     | 7 | 0.407        | 1.008            | 3.002               |
+| CLIP (2D render)        | 3 | 0.358        | 1.382            | 3.560               |
 
-(Agglomerative shows the same ordering: DINOv2 0.489 vs Point-MAE 0.407 silhouette.)
+(Agglomerative shows the same DINOv2 > Point-MAE ordering: 0.489 vs 0.407 silhouette.)
 
 Interpretation: DINOv2 sees colour, material and lens/rim styling from the renders, which
 dominates human perception of "similar-looking glasses"; Point-MAE sees pure geometry, so it
-groups by frame shape/proportion but is blind to colour and finish. For *visual* similarity,
-the 2D feature is the more expressive signal on this set. **n = 14 is small, so these numbers
-are illustrative/relative, not absolute.**
+groups by frame shape/proportion but is blind to colour and finish. Notably **CLIP — also a
+2D render feature — separates *worse* than both** (and collapses to just k=3): its
+language-aligned embedding is coarser/more semantic ("a pair of glasses") and less sensitive
+to the fine visual differences that distinguish these similar products. So "2D beats 3D" here
+is really "DINOv2's fine-grained visual features beat both pure geometry and CLIP's coarse
+semantics." **n = 14 is small, so these numbers are illustrative/relative, not absolute.**
 
 **Figures** (`reports/part_a/`): `dinov2_kmeans_umap.png`, `point_mae_kmeans_umap.png`
 (UMAP scatter coloured by cluster), `*_metrics.png` (metric tables), and
@@ -209,11 +214,39 @@ Observations:
   manifold (identity/attribute space), not in well-separated blobs — so partitional methods
   impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** (everything
   labelled noise), which is the honest signature of a continuous space rather than a bug.
+- **Face-specialized vs generic backbone** (ablation): embedding the same 500 faces with a
+  *generic* DINOv2 gives more geometrically separated clusters (KMeans silhouette **0.195** vs
+  ArcFace's 0.045), but those clusters key on coarse image factors (pose, lighting, framing)
+  rather than identity attributes. ArcFace's lower-silhouette clusters are the ones that
+  *mean* something — validated to align with gender (purity 0.81) and age. So higher silhouette
+  ≠ more useful clustering: the face-specialized model earns its place by producing
+  *attribute-meaningful* groups. Both are toggles in the Part B viewer.
 
 **Figures** (`reports/part_b/`): `arcface_kmeans_umap.png` (clusters), `arcface_metrics.png`,
 `arcface_clusters_montage.png` (sample faces per cluster — the gender/age grouping is visible
 at a glance), plus the agglomerative/hdbscan scatters. Per-cluster profiles are in
 `reports/part_b/arcface_results.json`.
+
+---
+
+## Encoder comparison
+
+The pipeline's pluggable `FeatureExtractor` design makes adding an encoder a one-file change,
+and the viewers + metric tables pick it up automatically. Beyond the two primaries, additional
+encoders were run as comparisons:
+
+| Encoder | Part | Status | Result |
+|---|---|---|---|
+| DINOv2 (render) | A 2D | primary | best — silhouette 0.479 |
+| Point-MAE (mesh) | A 3D | primary | 0.407 |
+| **CLIP (render)** | A 2D | **added** | 0.358 — coarser/semantic, weakest here |
+| ArcFace | B | primary | gender purity 0.81 (attribute-meaningful) |
+| **DINOv2-generic** | B | **added** | higher silhouette (0.195) but not attribute-aligned |
+| PE-Core (render) | A 2D | **deferred** | `perception_models` needs Python ≥3.11; box runs 3.10 |
+| OpenShape/ULIP-2 | A 3D | **deferred** | CUDA-coupled PointBERT; Point-MAE already covers learned-3D |
+
+The two deferred encoders are documented rather than stubbed — each is a one-line re-enable
+(`encoders_2d`/`encoders_3d` in `config/default.yaml`) once its environment constraint is met.
 
 ---
 
