@@ -29,8 +29,8 @@ def _vertex_colors(mesh: trimesh.Trimesh) -> np.ndarray | None:
         vc = mesh.visual.vertex_colors
         if vc is not None and len(vc) == len(mesh.vertices):
             return np.asarray(vc[:, :3], dtype=float) / 255.0
-    except Exception:  # noqa: BLE001 - colors are optional; degrade gracefully
-        pass
+    except Exception as exc:  # noqa: BLE001 - colors optional; degrade to gray, but log
+        log.debug("vertex_colors unavailable; using gray fallback: %s", exc)
     return None
 
 
@@ -57,12 +57,10 @@ def _render_one(mesh: trimesh.Trimesh, size_px: int, elev: float, azim: float,
     ax.view_init(elev=elev, azim=azim)
     ax.set_axis_off(); ax.set_box_aspect((1, 1, 1))
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", transparent=True, bbox_inches="tight", pad_inches=0)
+    fig.savefig(buf, format="png", transparent=True)   # no bbox_inches="tight": keep square canvas
     plt.close(fig); buf.seek(0)
     img = Image.open(buf).convert("RGBA")
-    if ss > 1:
-        img = img.resize((max(1, img.width // ss), max(1, img.height // ss)), Image.LANCZOS)
-    return img
+    return img.resize((size_px, size_px), Image.LANCZOS)  # exact, consistent output size
 
 
 def render_views(mesh: trimesh.Trimesh, asset_id: str, out_dir: str | Path,

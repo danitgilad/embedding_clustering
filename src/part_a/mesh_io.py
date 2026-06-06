@@ -21,18 +21,20 @@ def load_glb(path: str | Path) -> trimesh.Scene | trimesh.Trimesh:
 
 
 def to_single_mesh(obj: trimesh.Scene | trimesh.Trimesh) -> trimesh.Trimesh:
-    """Concatenate a Scene's geometries into one Trimesh; pass a Trimesh through.
+    """Flatten a Scene into one Trimesh, APPLYING each node's scene-graph transform;
+    pass a Trimesh through. Raises ValueError if there is no mesh geometry.
 
-    Raises ValueError if the GLB had no geometry (caller skips such files).
+    Uses Scene.dump(concatenate=True) — NOT trimesh.util.concatenate — because the latter
+    merges geometries in their local frames and drops the scene-graph node transforms.
     """
     if isinstance(obj, trimesh.Trimesh):
         return obj
-    geoms = list(obj.geometry.values())
-    if not geoms:
+    if not obj.geometry:
         raise ValueError("GLB contains no mesh geometry")
-    if len(geoms) == 1:
-        return geoms[0]
-    return trimesh.util.concatenate(geoms)
+    dumped = obj.dump(concatenate=True)
+    if not isinstance(dumped, trimesh.Trimesh):
+        raise ValueError("GLB did not concatenate to a single mesh")
+    return dumped
 
 
 def sample_surface_points(mesh: trimesh.Trimesh, n_points: int, seed: int) -> np.ndarray:
