@@ -16,6 +16,16 @@ Part A DINOv2 (sil 0.479) vs Point-MAE (0.407); Part B 500 faces → KMeans k=6 
 gender+age (gender purity 0.81). Fast suite 34 passed / 3 @slow deselected; @slow real-model
 tests pass on box. Figures + results.json + montages in reports/.
 **REMAINING:** finishing-the-branch (merge/PR decision). Token used for pushes — REVOKE it.
+
+### Interactive viewers — Phase 1 DONE (2026-06-07)
+Added self-contained Plotly HTML viewers (adapted from umap_viewer) + verbose figures, from
+CURRENT results. New: `src/core/html_viewer.py` (build_viewer_html + image_to_data_uri),
+`src/part_a/viewer.py`, `src/part_b/viewer.py`, CLI `viewer` stage. Part A = always-visible
+glasses thumbnail cards (DINOv2 vs Point-MAE toggle); Part B = hover face + age/gender/pose
+(JPEG thumbs, ~2MB). Persisted `arcface_attributes.json`; annotated cluster montages with
+per-cluster stats. Generated on box, pulled to `reports/{part_a,part_b}/viewer.html`. 41 fast
+tests pass. **Phase 2 (optional encoders CLIP/PE-Core/DINOv2-generic/OpenShape) NOT yet done** —
+separate plan; viewers will pick them up as extra toggles automatically.
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
 **Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)

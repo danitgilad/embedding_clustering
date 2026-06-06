@@ -97,6 +97,31 @@ The committed copies used in this README live under `reports/`.
 Configuration lives entirely in `config/default.yaml` and is loaded into typed dataclasses;
 any value can be overridden from the CLI with `--set dotted.key=value`.
 
+## Interactive viewers
+
+The `viewer` stage builds a **self-contained interactive HTML** explorer per part (Plotly via
+CDN, thumbnails embedded — just open the file in a browser, no server):
+
+```bash
+python main.py part-a viewer   # -> outputs/part_a/viewer.html
+python main.py part-b viewer   # -> outputs/part_b/viewer.html
+```
+
+Committed copies: **[`reports/part_a/viewer.html`](reports/part_a/viewer.html)** and
+**[`reports/part_b/viewer.html`](reports/part_b/viewer.html)**. Each has a **button per
+encoder** (toggle the feature/model) and a **per-encoder clustering-quality table** (best cell
+highlighted). It's decoupled from encoding — the stage reads the cached `*.npy`, recomputes
+UMAP + clusters deterministically, and renders — so the HTML can be rebuilt/restyled instantly.
+
+- **Part A** — each point is a glasses asset shown as its **rendered thumbnail on a
+  cluster-coloured card** (umap_viewer style); hover shows the id.
+- **Part B** — a UMAP scatter coloured by cluster; **hover any point to see that face** plus
+  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs, keeping
+  the 500-point file ~2 MB).
+
+Static PNGs (UMAP scatters, metric tables, and **annotated per-cluster montages** — each row
+labelled with the cluster's stats) are also written under `reports/` for quick at-a-glance review.
+
 ---
 
 ## Part A — 3D glasses clustering
