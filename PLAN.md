@@ -8,13 +8,13 @@
 
 ## Current status
 
-**Phase:** Design complete & spec written. Awaiting user review of the spec before
-writing the implementation plan.
+**Phase:** Implementation plan written & self-reviewed. Awaiting user's choice of execution
+mode (subagent-driven vs inline).
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
-**Next action:** User reviews spec → then invoke `writing-plans` skill to produce the
-implementation plan. First impl step will be: verify elem-danit1 outbound internet (D11).
-**Note:** not a git repo yet — spec not committed (offer `git init`).
+**Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)
+**Next action:** Pick execution mode, then start at **Task 0.1** (verify elem-danit1 access,
+outbound internet to TPDNE, Point-MAE checkpoint URL).
 
 ---
 
@@ -139,4 +139,12 @@ _(append-only; what was actually built/done, with file paths)_
 - 2026-06-06: Project inspected; `task.md` + 14 `.glb` assets present. No code yet.
 - 2026-06-06: Created DEFINITIONS.md + PLAN.md. Brainstormed design (D1–D14).
 - 2026-06-06: Wrote design spec → `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`.
-  Spec self-review passed. Awaiting user review.
+  Spec self-review passed. Revised per user: removed "face-vs-generic" framing; added §12
+  (optional encoders deferred until primaries work).
+- 2026-06-06: `git init`; first commit `9acdb80` (docs only, no solution code). Remote
+  `github.com/danitgilad/embedding_clustering` (tokenless URL). Pushed `main`. `view_glbs.py`
+  (user's FiftyOne exploration script) left UNTRACKED on disk — decide later whether to
+  relocate under `exploration/` or keep local-only. ACTION FOR USER: revoke the exposed PAT.
+- 2026-06-06: Wrote implementation plan → `docs/superpowers/plans/2026-06-06-embedding-clustering.md`.
+  Phases: 0 infra/scaffold, 1 shared core, 2 Part A, 3 Part B, 4 CLI/integration/docs.
+  TDD throughout; heavy encoders behind @slow + run on box. Self-review passed.
