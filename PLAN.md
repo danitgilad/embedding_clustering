@@ -178,3 +178,9 @@ _(append-only; what was actually built/done, with file paths)_
   to box run (Task 4.3/2.4 real). FOLLOW-UPS (non-blocking, do in box-run hardening):
   guard np.vstack([]) when all assets skipped (dinov2+point_mae); tighten run_clustering_stage
   return type to dict[str,dict].
+- 2026-06-06: **Part B DONE** (Tasks 3.1–3.3), APPROVED. Commits f91835a (generate),
+  59d4b6b (arcface), 8001236 (pipeline). 32 passed, 3 @slow deselected. arcface imports
+  insightface/cv2 lazily; raises on all-skipped (no empty vstack); _gender handles .sex/.gender
+  version diffs. pytest.ini (Task 4.2) was done early. Minor cosmetic notes (a few missing
+  type annots/docstrings on privates) — non-blocking.
+  REMAINING: 4.1 CLI, 4.3 box e2e run, 4.4 README, 4.5 acceptance.
