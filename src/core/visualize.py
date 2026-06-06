@@ -46,11 +46,13 @@ def metric_table_png(rows: Mapping[str, Mapping[str, float]], out_path: str | Pa
 
 def cluster_montage(image_paths: Sequence[str | Path], labels: np.ndarray,
                     out_path: str | Path, thumb_px: int = 96,
-                    max_per_cluster: int = 12) -> Path:
+                    max_per_cluster: int = 12,
+                    row_titles: dict[int, str] | None = None, caption: str = "") -> Path:
     """Grid of thumbnails grouped by cluster (one row per cluster). Save PNG.
 
     Shows at most `max_per_cluster` examples per cluster so the montage stays readable for
     large clusters (cluster label -1, HDBSCAN noise, is skipped).
+    `row_titles` maps cluster int -> y-axis label; `caption` is appended to the figure title.
     """
     out_path = Path(out_path)
     by_cluster: dict[int, list[Path]] = {}
@@ -72,7 +74,10 @@ def cluster_montage(image_paths: Sequence[str | Path], labels: np.ndarray,
                 img = Image.open(by_cluster[c_lab][col]).convert("RGB").resize(
                     (thumb_px, thumb_px))
                 ax.imshow(np.asarray(img))
-        axes[r][0].set_ylabel(f"c{c_lab}", rotation=0, labelpad=18, va="center")
-    fig.suptitle("Clusters")
+        label = (row_titles or {}).get(c_lab, f"c{c_lab}")
+        axes[r][0].set_ylabel(label, rotation=0, labelpad=42, ha="right", va="center",
+                              fontsize=8)
+    fig.suptitle("Per-cluster sample thumbnails" + (f"\n{caption}" if caption else ""),
+                 fontsize=11)
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
     return out_path

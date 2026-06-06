@@ -22,3 +22,14 @@ def test_cluster_montage_writes_png(tmp_path):
     labels = np.array([0, 0, 1, 1])
     out = cluster_montage(imgs, labels, tmp_path / "m.png")
     assert out.exists()
+
+def test_cluster_montage_accepts_row_titles(tmp_path):
+    from PIL import Image
+    import numpy as np
+    from src.core.visualize import cluster_montage
+    imgs = []
+    for i in range(4):
+        p = tmp_path / f"{i}.png"; Image.new("RGB", (8, 8), (i*10, 0, 0)).save(p); imgs.append(p)
+    out = cluster_montage(imgs, np.array([0, 0, 1, 1]), tmp_path / "m.png",
+                          row_titles={0: "C0 n=2", 1: "C1 n=2"}, caption="demo")
+    assert out.exists()
