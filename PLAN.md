@@ -164,3 +164,17 @@ _(append-only; what was actually built/done, with file paths)_
   had an impossible assertion ([3,4] == column mean → [0,0] un-normalizable); implementer
   correctly fixed the FIXTURE to [3,5] (impl unchanged). Optional low-sev TODOs: type `make`
   param in cluster._best_k; document frozen+ndarray unhashable; add ndim!=2 + unknown-step tests.
+- 2026-06-06: **Part A geometry DONE** (Tasks 2.1–2.2). Commits 25c9402, 9c5874e, then fix
+  adb97ab. Review (with real-GLB smoke test) caught a CRITICAL bug: `trimesh.util.concatenate`
+  drops scene-graph node transforms → multi-part meshes (temple arms) misplaced by ~object
+  size. FIXED to `obj.dump(concatenate=True)` (bakes transforms) + regression test. Also fixed
+  render output to exact size_px×size_px (was cropped by bbox_inches=tight) and added log on
+  vertex-color fallback. Verified on real asset: 17890 verts, 256×256 render. 24 tests pass.
+  LEARNING (for README): always flatten GLB scenes with dump(concatenate=True), not util.concatenate.
+- 2026-06-06: **Part A extractors + pipeline DONE** (Tasks 2.3–2.5 + pytest.ini early).
+  Commits a924291 (pytest.ini slow marker), f5042da (DINOv2), 00cf7a1 (Point-MAE + setup
+  script), 273f777 (pipeline). APPROVED. 27 passed, 2 @slow deselected. torch/transformers
+  imported lazily (verified). Point-MAE `_load_model`/`_encode` repo-specific bits deferred
+  to box run (Task 4.3/2.4 real). FOLLOW-UPS (non-blocking, do in box-run hardening):
+  guard np.vstack([]) when all assets skipped (dinov2+point_mae); tighten run_clustering_stage
+  return type to dict[str,dict].
