@@ -1,0 +1,14 @@
+{
+  "kmeans": {
+    "n_clusters": 7,
+    "silhouette": 0.4068078621066781,
+    "davies_bouldin": 1.0080418273865595,
+    "calinski_harabasz": 3.0020026395858834
+  },
+  "agglomerative": {
+    "n_clusters": 7,
+    "silhouette": 0.4068078621066781,
+    "davies_bouldin": 1.0080418273865595,
+    "calinski_harabasz": 3.0020026395858834
+  }
+}
