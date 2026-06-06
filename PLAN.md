@@ -158,3 +158,9 @@ _(append-only; what was actually built/done, with file paths)_
   (typed dataclasses + dotted overrides), src/utils/{seeding,io}.py. Local `.venv` has the
   lightweight test deps. Minor non-blocking notes: logging level validation, inline numpy
   import, missing tests/utils/ pkg dir — deferred.
+- 2026-06-06: **Phase 1 shared core DONE** (Tasks 1.1–1.6), APPROVED by review (20 tests pass).
+  Commits 7c48048, f3c12d6, f4e993b, 02dec73, f2e8452, f00cc6b. Created core/{types,
+  embedding_store, reduce, cluster, metrics, visualize}.py. NOTE: plan's test_reduce fixture
+  had an impossible assertion ([3,4] == column mean → [0,0] un-normalizable); implementer
+  correctly fixed the FIXTURE to [3,5] (impl unchanged). Optional low-sev TODOs: type `make`
+  param in cluster._best_k; document frozen+ndarray unhashable; add ndim!=2 + unknown-step tests.
