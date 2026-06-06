@@ -152,3 +152,9 @@ _(append-only; what was actually built/done, with file paths)_
   Python 3.10.12; TPDNE reachable from box (548KB JPEG); Point-MAE repo reachable
   (github.com/Pang-Yatian/Point-MAE HEAD 7445a68). Point-MAE checkpoint URL: TBD — look up
   from repo README during Task 2.4 setup (env POINT_MAE_CKPT_URL).
+- 2026-06-06: **Phase 0 foundation DONE** (Tasks 0.2–0.5), APPROVED by review (6 tests pass).
+  Commits 148dd7a, add4e53, 5b36a1e, aae8e9c. Created: skeleton + __init__.py tree,
+  requirements.txt, config/default.yaml, README stub, src/logging_setup.py, src/config.py
+  (typed dataclasses + dotted overrides), src/utils/{seeding,io}.py. Local `.venv` has the
+  lightweight test deps. Minor non-blocking notes: logging level validation, inline numpy
+  import, missing tests/utils/ pkg dir — deferred.
