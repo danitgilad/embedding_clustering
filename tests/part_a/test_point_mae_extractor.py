@@ -12,9 +12,9 @@ def test_point_mae_implements_protocol():
 
 @pytest.mark.slow
 def test_point_mae_extract_real():
-    """Needs vendored Point-MAE + checkpoint on the GPU box."""
+    """Needs the downloaded Point-MAE checkpoint (scripts/setup_encoders.sh)."""
     from src.part_a.extractors.point_mae import PointMAEExtractor
-    ext = PointMAEExtractor(checkpoint="vendor/Point-MAE/checkpoints/pretrain.pth",
+    ext = PointMAEExtractor(checkpoint="checkpoints/point_mae_pretrain.pth",
                             n_points=1024, seed=0)
     emb = ext.extract([Asset(id="m", path="assets/00686245121504.glb")])
-    assert emb.vectors.shape[0] == 1 and emb.vectors.shape[1] >= 256
+    assert emb.vectors.shape[0] == 1 and emb.vectors.shape[1] == 768

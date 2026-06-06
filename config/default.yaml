@@ -25,11 +25,11 @@ part_a:
       - [20, 0]
       - [20, 90]
   point_sampling:
-    n_points: 8192
+    n_points: 1024                      # matches Point-MAE's ShapeNet pretrain regime
   dinov2:
     hf_model: facebook/dinov2-base
   point_mae:
-    checkpoint: vendor/Point-MAE/checkpoints/pretrain.pth
+    checkpoint: checkpoints/point_mae_pretrain.pth
   clustering:
     algorithms: [kmeans, agglomerative]
     k_min: 2

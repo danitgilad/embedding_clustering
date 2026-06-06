@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-# Bootstrap the Point-MAE encoder (vendored; custom ops + checkpoint not pip-installable).
-# Idempotent: safe to re-run. Run on the GPU box after `pip install -r requirements.txt`.
+# Fetch the Point-MAE pretrained encoder weights for Part A's 3D feature.
+#
+# The encoder architecture is reimplemented (CPU-friendly, no CUDA extensions) in
+# src/part_a/extractors/_point_mae_backbone.py; this script only downloads the official
+# ShapeNet pretrained weights that get loaded into it. No repo clone, no compilation.
+# Idempotent: safe to re-run.
+#
+# Usage:  bash scripts/setup_encoders.sh [DEST_PATH]
+#   DEST_PATH defaults to checkpoints/point_mae_pretrain.pth (matches config/default.yaml).
+#   Override the source with POINT_MAE_CKPT_URL=... if the release URL ever moves.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENDOR="$ROOT/vendor"
-mkdir -p "$VENDOR"
+CKPT="${1:-$ROOT/checkpoints/point_mae_pretrain.pth}"
+URL="${POINT_MAE_CKPT_URL:-https://github.com/Pang-Yatian/Point-MAE/releases/download/main/pretrain.pth}"
 
-if [ ! -d "$VENDOR/Point-MAE" ]; then
-  git clone --depth 1 https://github.com/Pang-Yatian/Point-MAE.git "$VENDOR/Point-MAE"
+mkdir -p "$(dirname "$CKPT")"
+if [ ! -f "$CKPT" ]; then
+  echo "Downloading Point-MAE pretrain checkpoint -> $CKPT"
+  wget -q -O "$CKPT" "$URL"
 fi
-
-CKPT_DIR="$VENDOR/Point-MAE/checkpoints"
-mkdir -p "$CKPT_DIR"
-# Set POINT_MAE_CKPT_URL to the pretrain .pth URL from the Point-MAE repo README.
-CKPT_URL="${POINT_MAE_CKPT_URL:?Set POINT_MAE_CKPT_URL to the pretrain .pth URL}"
-if [ ! -f "$CKPT_DIR/pretrain.pth" ]; then
-  wget -O "$CKPT_DIR/pretrain.pth" "$CKPT_URL"
-fi
-echo "Point-MAE ready at $VENDOR/Point-MAE"
+echo "Point-MAE checkpoint ready at $CKPT"
