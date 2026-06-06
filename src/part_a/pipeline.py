@@ -81,7 +81,12 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
         sel = [(montage_images[i], int(primary_labels[j]))
                for j, i in enumerate(emb.ids) if i in montage_images]
         if sel:
+            from collections import Counter
+            sizes = Counter(int(l) for l in primary_labels)
+            titles = {c: f"cluster {c} (n={n})" for c, n in sizes.items()}
             cluster_montage([p for p, _ in sel], [lab for _, lab in sel],
-                            fig_dir / f"{extractor.name}_clusters_montage.png")
+                            fig_dir / f"{extractor.name}_clusters_montage.png",
+                            row_titles=titles,
+                            caption=f"{extractor.name}: glasses grouped by primary-algorithm cluster")
     write_json(results, out / f"{extractor.name}_results.json")
     return results

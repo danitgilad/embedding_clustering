@@ -93,7 +93,13 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
         sel = [(montage_images[i], int(primary_labels[j]))
                for j, i in enumerate(emb.ids) if i in montage_images]
         if sel:
+            prof = results.get(f"{algorithms[0]}__profile", {})
+            titles = {int(c): f"C{c} · n={d['size']} · {d['pct_top_gender']*100:.0f}% "
+                              f"{d['top_gender']} · age {d['mean_age']:.0f}"
+                      for c, d in prof.items()}
             cluster_montage([p for p, _ in sel], [lab for _, lab in sel],
-                            fig_dir / f"{emb.name}_clusters_montage.png")
+                            fig_dir / f"{emb.name}_clusters_montage.png",
+                            row_titles=titles,
+                            caption="Faces grouped by KMeans cluster (sample per cluster)")
     write_json(results, out / f"{emb.name}_results.json")
     return results
