@@ -26,6 +26,20 @@ glasses thumbnail cards (DINOv2 vs Point-MAE toggle); Part B = hover face + age/
 per-cluster stats. Generated on box, pulled to `reports/{part_a,part_b}/viewer.html`. 41 fast
 tests pass. **Phase 2 (optional encoders CLIP/PE-Core/DINOv2-generic/OpenShape) NOT yet done** —
 separate plan; viewers will pick them up as extra toggles automatically.
+
+### Phase 2 — encoder comparison (2026-06-07)
+- D18: **CLIP** (Part A 2D, `openai/clip-vit-base-patch32`) + **DINOv2-generic** (Part B,
+  face-vs-generic ablation) DONE: pluggable extractors, config registry, Part B now loops
+  encoders (arcface first = attribute source). Fixed per-encoder figure filenames (was
+  clobbering arcface plots).
+- D19: **PE-Core DEFERRED** — `perception_models` requires Python ≥3.11; elem-danit1 runs
+  3.10.12 and has no 3.11. Documented fallback (no dead-code stub). One-line re-enable
+  (`encoders_2d += pe_core`) once a 3.11 env exists.
+- D20: **OpenShape/ULIP-2 DEFERRED** — not pip-installable; CUDA-coupled PointBERT, full
+  CPU port disproportionate; Point-MAE already covers the learned-3D feature. Documented skip.
+- Viewer-polish during review: glasses 2x on plot; hover shows 2x COLOURED render (gray on
+  plot) — `to_single_mesh(bake_texture_color=True)` + colored front-view renders (13/14 ok,
+  1 gray fallback); Part B viewer JPEG thumbs (~2MB).
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
 **Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)
