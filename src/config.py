@@ -50,6 +50,11 @@ class DinoCfg:
 
 
 @dataclass(frozen=True)
+class ClipCfg:
+    hf_model: str = "openai/clip-vit-base-patch32"
+
+
+@dataclass(frozen=True)
 class PointMAECfg:
     checkpoint: str = "checkpoints/point_mae_pretrain.pth"
 
@@ -68,6 +73,7 @@ class PartACfg:
     render: RenderCfg = field(default_factory=RenderCfg)
     point_sampling: PointSamplingCfg = field(default_factory=PointSamplingCfg)
     dinov2: DinoCfg = field(default_factory=DinoCfg)
+    clip: ClipCfg = field(default_factory=ClipCfg)
     point_mae: PointMAECfg = field(default_factory=PointMAECfg)
     clustering: ClusteringCfg = field(default_factory=ClusteringCfg)
 

@@ -14,7 +14,7 @@ reduce:
     metric: cosine
 
 part_a:
-  encoders_2d: [dinov2]               # primary; optional later: clip, pe_core
+  encoders_2d: [dinov2, clip]         # primary; optional later: pe_core
   encoders_3d: [point_mae]            # primary; optional later: openshape
   render:
     size_px: 512
@@ -28,6 +28,8 @@ part_a:
     n_points: 1024                      # matches Point-MAE's ShapeNet pretrain regime
   dinov2:
     hf_model: facebook/dinov2-base
+  clip:
+    hf_model: openai/clip-vit-base-patch32
   point_mae:
     checkpoint: checkpoints/point_mae_pretrain.pth
   clustering:

@@ -36,6 +36,9 @@ def build_extractors(cfg: Config, render_dir: Path) -> list[FeatureExtractor]:
         if name == "dinov2":
             from src.part_a.extractors.dinov2 import DINOv2Extractor
             exts.append(DINOv2Extractor(cfg.part_a.dinov2.hf_model, render_dir))
+        elif name == "clip":
+            from src.part_a.extractors.clip import CLIPExtractor
+            exts.append(CLIPExtractor(cfg.part_a.clip.hf_model, render_dir))
         else:
             raise ValueError(f"unknown 2D encoder {name!r}")
     for name in cfg.part_a.encoders_3d:
