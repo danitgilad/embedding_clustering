@@ -18,7 +18,7 @@ from src.core.embedding_store import save_embeddings
 from src.core.reduce import preprocess as _pre, umap_2d
 from src.core.types import Asset
 from src.core.visualize import metric_table_png, scatter_2d
-from src.utils.io import ensure_dir
+from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
 
@@ -79,4 +79,5 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
     metric_table_png({a: {k: v for k, v in r.items() if isinstance(v, float)}
                       for a, r in results.items() if not a.endswith("__profile")},
                      fig_dir / "arcface_metrics.png", title="Face clustering metrics")
+    write_json(results, out / f"{emb.name}_results.json")
     return results

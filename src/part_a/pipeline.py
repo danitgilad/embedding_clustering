@@ -17,7 +17,7 @@ from src.core.embedding_store import save_embeddings
 from src.core.reduce import preprocess as _pre, umap_2d
 from src.core.types import Asset, FeatureExtractor
 from src.core.visualize import metric_table_png, scatter_2d
-from src.utils.io import ensure_dir
+from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
 
@@ -69,4 +69,5 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
                       for a, r in results.items()},
                      fig_dir / f"{extractor.name}_metrics.png",
                      title=f"{extractor.name} clustering metrics")
+    write_json(results, out / f"{extractor.name}_results.json")
     return results
