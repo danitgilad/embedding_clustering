@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--set", dest="overrides", action="append", default=[],
                    help="dotted config override, e.g. --set part_b.n_images=200")
     p.add_argument("part", choices=["part-a", "part-b"])
-    p.add_argument("stage", choices=["render", "generate", "extract", "cluster", "all"])
+    p.add_argument("stage", choices=["render", "generate", "extract", "cluster", "viewer", "all"])
     p.add_argument("--n", type=int, default=None, help="Part B: number of faces")
     return p
 
@@ -78,6 +78,9 @@ def _run_part_a(cfg, stage: str) -> None:
                 cfg.reduce.preprocess, cfg.reduce.pca_components, umap_cfg, cfg.seed,
                 montage_images=montage)
             log.info("Part A %s: %s", ext.name, res)
+    if stage in ("viewer", "all"):
+        from src.part_a.viewer import build_part_a_viewer
+        build_part_a_viewer(cfg, out, render_dir)
 
 
 def _run_part_b(cfg, stage: str) -> None:
