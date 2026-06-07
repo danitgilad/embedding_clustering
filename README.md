@@ -222,6 +222,16 @@ Observations:
   ≠ more useful clustering: the face-specialized model earns its place by producing
   *attribute-meaningful* groups. Both are toggles in the Part B viewer.
 
+**Choosing k — silhouette vs attribute-driven.** The detailed k=6 result above is the
+*silhouette* selection. Because the structure is continuous and what we care about is
+*attributes*, Part B also supports **attribute-driven k-selection** (`clustering.k_selection:
+attribute`): sweep k and pick the k that maximizes **gender + age AMI** (adjusted mutual
+information). On KMeans this collapses to **k=3** (women 97% F · men 86% M · a young cohort)
+with **gender purity 0.864 > 0.808** and gender NMI 0.398 > 0.270 — a *more* gender-meaningful
+partition than silhouette's k=6. (This is now the default; silhouette is one flag away.)
+Agglomerative under AMI still climbs to k_max because its finer splits stay gender-coherent —
+the same continuous-manifold signature HDBSCAN showed.
+
 **Figures** (`reports/part_b/`): `arcface_kmeans_umap.png` (clusters), `arcface_metrics.png`,
 `arcface_clusters_montage.png` (sample faces per cluster — the gender/age grouping is visible
 at a glance), plus the agglomerative/hdbscan scatters. Per-cluster profiles are in

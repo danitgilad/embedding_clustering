@@ -60,17 +60,28 @@ validation: the model's predicted age/gender act as pseudo-labels, scored by **N
 purity**. This turns "is this clustering good?" from a guess into a measurement.
 
 ## How we chose the number of clusters
-**Automatically.** For KMeans and Agglomerative we sweep *k* over a range and pick the *k*
-with the **best cosine silhouette**. HDBSCAN needs no *k* (density-based).
+**Automatically, two ways (configurable per part).**
+- **Silhouette sweep (default):** for KMeans/Agglomerative, sweep *k* and pick the *k* with the
+  best cosine silhouette. HDBSCAN needs no *k*.
+- **Attribute-driven (Part B):** sweep *k* and pick the *k* that maximizes **gender + age AMI**
+  (adjusted mutual information — chance-corrected, so it doesn't reward over-splitting). This
+  lets *the attributes we care about* drive *k*, not geometric separation.
 
-**Could it be better?** Silhouette is a reasonable default but biased toward few, well-separated
-clusters, and:
-- *Part A (n=14):* with so few items, "best k" is unstable (it picked 7 for DINOv2, 3 for CLIP);
-  a smaller fixed k would be more interpretable. Numbers are illustrative.
-- *Part B:* the structure is genuinely continuous (gender × age × pose), so **no single k is
-  "correct."** A better strategy would be to pick *k* that **maximizes attribute alignment**
-  (NMI/purity vs gender+age) rather than pure silhouette — i.e., let the thing we care about
-  drive *k* — or fix *k* from domain knowledge (e.g. gender×age strata).
+**Why it matters — Part B comparison:**
+
+| k-selection | k | gender purity | gender NMI |
+|---|---|---|---|
+| silhouette | 6 | 0.808 | 0.270 |
+| **attribute (AMI)** | **3** | **0.864** | **0.398** |
+
+Attribute-driven selection collapses to **k=3 (women / men / a young cohort)** and aligns
+*better* with gender than silhouette's k=6 — confirming **gender is the dominant structure**.
+(Agglomerative under AMI still rails to k_max=12: its finer splits stay gender-coherent so AMI
+keeps rising — an honest signature of a continuous manifold, not a degenerate artifact.)
+
+**Caveats:** *Part A (n=14)* "best k" is unstable (silhouette picked 7 for DINOv2, 3 for CLIP) —
+illustrative only. *Part B* structure is continuous (gender × age × pose), so no single k is
+"correct"; the attribute-driven k is the most *interpretable* choice for this goal.
 
 ---
 

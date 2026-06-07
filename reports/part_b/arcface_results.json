@@ -1,79 +1,121 @@
 {
   "kmeans__profile": {
     "0": {
-      "size": 116,
-      "mean_age": 44.37068965517241,
+      "size": 195,
+      "mean_age": 42.58461538461538,
       "top_gender": "F",
-      "pct_top_gender": 1.0
+      "pct_top_gender": 0.9743589743589743
     },
     "1": {
-      "size": 87,
-      "mean_age": 47.97701149425287,
+      "size": 206,
+      "mean_age": 47.46601941747573,
       "top_gender": "M",
-      "pct_top_gender": 1.0
+      "pct_top_gender": 0.8640776699029126
     },
     "2": {
-      "size": 95,
-      "mean_age": 38.93684210526316,
-      "top_gender": "M",
-      "pct_top_gender": 0.6526315789473685
-    },
-    "3": {
-      "size": 91,
-      "mean_age": 37.16483516483517,
+      "size": 99,
+      "mean_age": 26.818181818181817,
       "top_gender": "F",
-      "pct_top_gender": 0.8351648351648352
-    },
-    "4": {
-      "size": 53,
-      "mean_age": 19.49056603773585,
-      "top_gender": "F",
-      "pct_top_gender": 0.5849056603773585
-    },
-    "5": {
-      "size": 58,
-      "mean_age": 56.93103448275862,
-      "top_gender": "M",
-      "pct_top_gender": 0.5517241379310345
+      "pct_top_gender": 0.6464646464646465
     }
   },
   "kmeans": {
-    "n_clusters": 6,
-    "silhouette": 0.0447582179546199,
-    "davies_bouldin": 5.2135318264585075,
-    "calinski_harabasz": 7.799464804279317,
-    "gender_nmi": 0.2695367062271497,
-    "gender_ari": 0.19513176720127978,
-    "gender_purity": 0.808,
-    "age_nmi": 0.14786620238172227,
-    "age_ari": 0.0864832732570996,
-    "age_purity": 0.602
+    "n_clusters": 3,
+    "silhouette": 0.04370327645768691,
+    "davies_bouldin": 5.662603444460056,
+    "calinski_harabasz": 10.508540368607443,
+    "gender_nmi": 0.39816702011745725,
+    "gender_ari": 0.44527243100964475,
+    "gender_purity": 0.864,
+    "age_nmi": 0.10015484455206132,
+    "age_ari": 0.07337827237131418,
+    "age_purity": 0.546
   },
   "agglomerative__profile": {
     "0": {
-      "size": 340,
-      "mean_age": 42.305882352941175,
+      "size": 97,
+      "mean_age": 45.50515463917526,
       "top_gender": "M",
-      "pct_top_gender": 0.6176470588235294
+      "pct_top_gender": 0.9072164948453608
     },
     "1": {
-      "size": 160,
-      "mean_age": 39.70625,
+      "size": 33,
+      "mean_age": 48.121212121212125,
       "top_gender": "F",
-      "pct_top_gender": 0.95
+      "pct_top_gender": 1.0
+    },
+    "2": {
+      "size": 43,
+      "mean_age": 17.046511627906977,
+      "top_gender": "F",
+      "pct_top_gender": 0.5116279069767442
+    },
+    "3": {
+      "size": 36,
+      "mean_age": 53.19444444444444,
+      "top_gender": "M",
+      "pct_top_gender": 1.0
+    },
+    "4": {
+      "size": 37,
+      "mean_age": 32.567567567567565,
+      "top_gender": "F",
+      "pct_top_gender": 0.8918918918918919
+    },
+    "5": {
+      "size": 65,
+      "mean_age": 37.84615384615385,
+      "top_gender": "F",
+      "pct_top_gender": 1.0
+    },
+    "6": {
+      "size": 32,
+      "mean_age": 43.8125,
+      "top_gender": "M",
+      "pct_top_gender": 1.0
+    },
+    "7": {
+      "size": 41,
+      "mean_age": 42.853658536585364,
+      "top_gender": "M",
+      "pct_top_gender": 0.5609756097560976
+    },
+    "8": {
+      "size": 20,
+      "mean_age": 34.25,
+      "top_gender": "F",
+      "pct_top_gender": 0.7
+    },
+    "9": {
+      "size": 42,
+      "mean_age": 38.57142857142857,
+      "top_gender": "F",
+      "pct_top_gender": 0.9523809523809523
+    },
+    "10": {
+      "size": 26,
+      "mean_age": 61.34615384615385,
+      "top_gender": "F",
+      "pct_top_gender": 0.8846153846153846
+    },
+    "11": {
+      "size": 28,
+      "mean_age": 48.67857142857143,
+      "top_gender": "F",
+      "pct_top_gender": 0.8928571428571429
     }
   },
   "agglomerative": {
-    "n_clusters": 2,
-    "silhouette": 0.0326961582624479,
-    "davies_bouldin": 6.698121815585802,
-    "calinski_harabasz": 9.600597624019816,
-    "gender_nmi": 0.25776583610441106,
-    "gender_ari": 0.19762361563602213,
-    "gender_purity": 0.724,
-    "age_nmi": 0.007909364330666132,
-    "age_ari": -0.003977387701169434,
-    "age_purity": 0.43
+    "n_clusters": 12,
+    "silhouette": 0.029931787671889826,
+    "davies_bouldin": 4.860238736214977,
+    "calinski_harabasz": 4.9557665222612854,
+    "gender_nmi": 0.26394649371491086,
+    "gender_ari": 0.12895752473867347,
+    "gender_purity": 0.868,
+    "age_nmi": 0.13440350012008326,
+    "age_ari": 0.05332122685445065,
+    "age_purity": 0.612
   },
   "hdbscan__profile": {
     "-1": {
