@@ -52,3 +52,4 @@ part_b:
     algorithms: [kmeans, agglomerative, hdbscan]
     k_min: 2
     k_max: 12
+    k_selection: attribute   # pick k by gender+age NMI (not silhouette) when attrs present

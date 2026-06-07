@@ -64,6 +64,7 @@ class ClusteringCfg:
     algorithms: tuple[str, ...] = ("kmeans", "agglomerative")
     k_min: int = 2
     k_max: int = 8
+    k_selection: str = "silhouette"   # "silhouette" or "attribute" (Part B: NMI vs gender+age)
 
 
 @dataclass(frozen=True)

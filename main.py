@@ -64,10 +64,15 @@ def _run_part_a(cfg, stage: str) -> None:
             mesh = to_single_mesh(load_glb(a.path))
             render_views(mesh, a.id, render_dir, cfg.part_a.render.size_px,
                          cfg.part_a.render.supersample, views)
-            # one colour-baked front-view render per asset, for the viewer's hover popup
-            color_mesh = to_single_mesh(load_glb(a.path), bake_texture_color=True)
-            render_views(color_mesh, a.id, render_dir / "colored", cfg.part_a.render.size_px,
-                         cfg.part_a.render.supersample, views[:1])
+            # one colour-baked front-view render per asset, for the viewer's hover popup.
+            # Best-effort: some GLBs trip trimesh's colour merge — fall back to the grey
+            # render for those (the viewer hover degrades to the grey thumbnail).
+            try:
+                color_mesh = to_single_mesh(load_glb(a.path), bake_texture_color=True)
+                render_views(color_mesh, a.id, render_dir / "colored", cfg.part_a.render.size_px,
+                             cfg.part_a.render.supersample, views[:1])
+            except Exception:  # noqa: BLE001 - colour bake is non-essential decoration
+                log.warning("colour render failed for %s; hover will use the grey render", a.id)
     if stage in ("extract", "cluster", "all"):
         import dataclasses
 
@@ -107,7 +112,8 @@ def _run_part_b(cfg, stage: str) -> None:
                 cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
                 cfg.reduce.preprocess, cfg.reduce.pca_components,
                 dataclasses.asdict(cfg.reduce.umap), cfg.seed,
-                montage_images={a.id: a.path for a in assets})
+                montage_images={a.id: a.path for a in assets},
+                k_selection=cfg.part_b.clustering.k_selection)
             log.info("Part B %s: %s", ext.name,
                      {k: v for k, v in res.items() if not k.endswith("__profile")})
     if stage in ("viewer", "all"):

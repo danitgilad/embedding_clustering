@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, KMeans
@@ -24,16 +25,21 @@ class ClusterResult:
     k_selected: int | None  # None for HDBSCAN
 
 
-def _best_k(X: np.ndarray, make, k_min: int, k_max: int) -> tuple[np.ndarray, int]:
-    """Sweep k, return (labels, k) maximizing cosine silhouette. k_max capped at N-1."""
-    best_labels, best_k, best_score = None, None, -1.0
+def _best_k(X: np.ndarray, make, k_min: int, k_max: int,
+            score_fn: Callable[[np.ndarray], float] | None = None) -> tuple[np.ndarray, int]:
+    """Sweep k, return (labels, k) maximizing a score. k_max capped at N-1.
+
+    Default score is cosine silhouette (geometric separation). Pass `score_fn(labels)->float`
+    to select k by a different objective — e.g. attribute alignment (NMI vs pseudo-labels).
+    """
+    best_labels, best_k, best_score = None, None, -np.inf
     hi = min(k_max, X.shape[0] - 1)
     for k in range(max(2, k_min), hi + 1):
         labels = make(k).fit_predict(X)
         if len(set(labels)) < 2:
             continue
-        score = silhouette_score(X, labels, metric="cosine")
-        log.debug("k=%d silhouette=%.4f", k, score)
+        score = score_fn(labels) if score_fn else silhouette_score(X, labels, metric="cosine")
+        log.debug("k=%d score=%.4f", k, score)
         if score > best_score:
             best_labels, best_k, best_score = labels, k, score
     if best_labels is None:
@@ -42,17 +48,23 @@ def _best_k(X: np.ndarray, make, k_min: int, k_max: int) -> tuple[np.ndarray, in
 
 
 def cluster(
-    X: np.ndarray, algorithm: str, k_min: int, k_max: int, seed: int
+    X: np.ndarray, algorithm: str, k_min: int, k_max: int, seed: int,
+    score_fn: Callable[[np.ndarray], float] | None = None,
 ) -> ClusterResult:
-    """Cluster X with the named algorithm. Returns a ClusterResult."""
+    """Cluster X with the named algorithm. Returns a ClusterResult.
+
+    score_fn (optional) overrides silhouette as the k-selection objective for KMeans /
+    Agglomerative (HDBSCAN chooses no k).
+    """
     if algorithm == "kmeans":
         labels, k = _best_k(
-            X, lambda k: KMeans(n_clusters=k, n_init=10, random_state=seed), k_min, k_max
+            X, lambda k: KMeans(n_clusters=k, n_init=10, random_state=seed), k_min, k_max,
+            score_fn,
         )
         return ClusterResult(labels, len(set(labels)), "kmeans", k)
     if algorithm == "agglomerative":
         labels, k = _best_k(
-            X, lambda k: AgglomerativeClustering(n_clusters=k), k_min, k_max
+            X, lambda k: AgglomerativeClustering(n_clusters=k), k_min, k_max, score_fn
         )
         return ClusterResult(labels, len(set(labels)), "agglomerative", k)
     if algorithm == "hdbscan":

@@ -13,6 +13,14 @@ def test_kmeans_recovers_k_via_silhouette():
     assert res.n_clusters == 3
     assert res.labels.shape == (90,)
 
+def test_score_fn_overrides_k_selection():
+    # A score_fn that rewards MORE clusters should make the sweep pick k_max, not the
+    # silhouette-optimal k=3. Proves attribute-driven selection can drive k.
+    X = _blobs(k=3)
+    res = cluster(X, algorithm="kmeans", k_min=2, k_max=5, seed=0,
+                  score_fn=lambda labels: len(set(labels.tolist())))
+    assert res.n_clusters == 5
+
 def test_agglomerative_runs():
     X = _blobs(k=4)
     res = cluster(X, algorithm="agglomerative", k_min=2, k_max=6, seed=0)

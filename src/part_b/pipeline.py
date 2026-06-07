@@ -63,15 +63,31 @@ def _age_bucket(age: float) -> str:
     return "young" if age < 35 else ("middle" if age < 55 else "old")
 
 
+def attribute_score_fn(gender_truth: np.ndarray, age_truth: np.ndarray):
+    """A k-selection objective: gender NMI + age NMI of a candidate labelling.
+
+    Used so the k-sweep picks the number of clusters that best aligns with the attributes we
+    actually care about (gender, age), rather than pure geometric silhouette.
+    """
+    from sklearn.metrics import normalized_mutual_info_score as nmi
+
+    def score(labels: np.ndarray) -> float:
+        return float(nmi(gender_truth, labels) + nmi(age_truth, labels))
+
+    return score
+
+
 def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path,
                          algorithms: Sequence[str], k_min: int, k_max: int,
                          preprocess: Sequence[str], pca_components: int | None,
                          umap_cfg: dict, seed: int,
-                         montage_images: dict[str, Path] | None = None) -> dict:
+                         montage_images: dict[str, Path] | None = None,
+                         k_selection: str = "silhouette") -> dict:
     """Embed, cluster per algorithm, characterize clusters, validate vs pseudo-labels, plot.
 
     If `montage_images` maps face id -> image path, also writes a per-cluster face montage
-    for the first (primary) algorithm.
+    for the first (primary) algorithm. `k_selection="attribute"` (when attributes exist)
+    picks k by maximizing gender+age NMI instead of silhouette.
     """
     out = ensure_dir(out_dir)
     fig_dir = ensure_dir(out / "figures")
@@ -85,11 +101,13 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
         write_json(attrs, ensure_dir(out_dir) / f"{emb.name}_attributes.json")
     gender_truth = np.array([attrs.get(i, {}).get("gender", "?") for i in emb.ids])
     age_truth = np.array([_age_bucket(attrs.get(i, {}).get("age", 0.0)) for i in emb.ids])
+    score_fn = attribute_score_fn(gender_truth, age_truth) \
+        if (k_selection == "attribute" and attrs) else None
 
     results: dict[str, dict] = {}
     primary_labels = None
     for algo in algorithms:
-        res = cluster(X, algo, k_min, k_max, seed)
+        res = cluster(X, algo, k_min, k_max, seed, score_fn=score_fn)
         if primary_labels is None:
             primary_labels = res.labels
         row = {"n_clusters": res.n_clusters, **M.internal_metrics(X, res.labels)}
