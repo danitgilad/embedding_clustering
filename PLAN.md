@@ -10,10 +10,12 @@
 
 **Phase:** COMPLETE — base project (23 tasks) + Phase 1 (interactive viewers) + Phase 2
 (encoder comparison) all done on branch `feature/implementation` (pushed). DEFINITIONS.md
-30/30. Fast suite 43 passed / 5 @slow deselected; @slow real-model tests pass on box.
-Results: Part A DINOv2 0.479 > Point-MAE 0.407 > CLIP 0.358; Part B ArcFace gender purity 0.81
-(k=6), generic-DINOv2 higher silhouette but not attribute-meaningful. PE-Core/OpenShape
-deferred (documented). Self-contained Plotly viewers in reports/part_*/viewer.html.
+30/30. Fast suite 44 passed / 5 @slow deselected; @slow real-model tests pass on box.
+Results: Part A DINOv2 0.479 > Point-MAE 0.407 > CLIP 0.358; Part B ArcFace gender-dominant.
+**Attribute-driven k-selection (D21):** KMeans k=3 gender purity 0.864 (vs silhouette k=6 →
+0.808). generic-DINOv2 higher silhouette but not attribute-meaningful. PE-Core/OpenShape
+deferred (documented). Self-contained Plotly viewers (incl. k-selection table) in
+reports/part_*/viewer.html.
 **REMAINING:** finishing-the-branch (merge/PR decision). Token used for pushes — REVOKE it.
 **Concise project summary:** see `SUMMARY.md`.
 
@@ -40,6 +42,16 @@ separate plan; viewers will pick them up as extra toggles automatically.
 - Viewer-polish during review: glasses 2x on plot; hover shows 2x COLOURED render (gray on
   plot) — `to_single_mesh(bake_texture_color=True)` + colored front-view renders (13/14 ok,
   1 gray fallback); Part B viewer JPEG thumbs (~2MB).
+- D21: **Attribute-driven k-selection (Part B)** — added optional `score_fn` to
+  `core.cluster.cluster()`; Part B config `clustering.k_selection: silhouette|attribute`
+  (default now `attribute`). The attribute objective maximizes **gender+age AMI** (adjusted
+  MI — chance-corrected, so it doesn't reward over-splitting to k_max). **Result:** KMeans
+  picks **k=3** (women / men / young) with **gender purity 0.864** (vs silhouette k=6 → 0.808)
+  and gender NMI 0.398 vs 0.270 → more gender-meaningful, confirming gender is the dominant
+  axis. (Agglomerative under AMI still climbs to k_max=12 — finer splits stay gender-coherent,
+  the same continuous-manifold signature HDBSCAN shows.) The Part B viewer embeds a
+  silhouette-vs-attribute **k-selection comparison table** (build_viewer_html `extra_html`).
+  Helper `part_b.pipeline.attribute_score_fn`; viewer reuses it. Documented in README + SUMMARY.
 **Date:** 2026-06-06
 **Spec:** `docs/superpowers/specs/2026-06-06-unsupervised-clustering-design.md`
 **Plan:** `docs/superpowers/plans/2026-06-06-embedding-clustering.md` (Tasks 0.1 → 4.5)
