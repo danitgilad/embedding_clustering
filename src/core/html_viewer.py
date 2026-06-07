@@ -136,7 +136,7 @@ def _metrics_table(projections: dict) -> str:
 def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list[str],
                       hover_meta: dict[str, dict] | None, *, title: str, intro: str,
                       always_show_thumbs: bool, thumb_scale: float = 1.0,
-                      hover_thumbs: list[str] | None = None,
+                      hover_thumbs: list[str] | None = None, extra_html: str = "",
                       page_title: str = "Embedding Cluster Viewer") -> str:
     """Render the full self-contained explorer HTML.
 
@@ -145,6 +145,8 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
     hover_meta: optional {id: {field: value}} shown in the hover tooltip.
     always_show_thumbs: True places thumbnails on the plot (small sets); False = hover-only.
     thumb_scale: multiplier on the always-visible thumbnail image size (card stays fixed).
+    extra_html: optional HTML block injected below the metrics table (e.g. a k-selection
+    comparison); empty by default.
     """
     names = list(projections)
     specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs,
@@ -173,6 +175,7 @@ table.m td.win{{background:#cdebcd;font-weight:700}}</style></head>
 <body><h2>{title}</h2><p>{intro}</p>
 <p style="margin-top:0"><b>Clustering quality per encoder</b> (silhouette ↑, Davies–Bouldin ↓,
 Calinski–Harabasz ↑; green = best):</p>{table}
+{extra_html}
 <div style="margin:8px 0">{btns}</div>{divs}
 <div id="tip" style="position:fixed;display:none;z-index:9;background:#fff;border:1px solid #ccc;
 border-radius:6px;padding:7px;box-shadow:2px 4px 14px rgba(0,0,0,.25);font:12px/1.4 sans-serif;

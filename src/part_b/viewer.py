@@ -35,6 +35,7 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
     um = cfg.reduce.umap
     algo = cfg.part_b.clustering.algorithms[0]
     use_attr = cfg.part_b.clustering.k_selection == "attribute"
+    attr_ctx = None   # (X, gender, age) of the first encoder with attributes, for the k-table
     for npy in npys:
         emb = load_embeddings(npy.stem, out_dir)
         if ids is None:
@@ -52,14 +53,20 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
             if not hover_meta:
                 hover_meta = {i: {"age": f"{a['age']:.0f}", "gender": a["gender"],
                                   "pose_yaw": f"{a['pose_yaw']:.0f}"} for i, a in raw.items()}
+            gender = np.array([raw.get(i, {}).get("gender", "?") for i in emb.ids])
+            age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in emb.ids])
+            if attr_ctx is None:
+                attr_ctx = (X, gender, age)
             if use_attr:
-                gender = np.array([raw.get(i, {}).get("gender", "?") for i in emb.ids])
-                age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in emb.ids])
                 score_fn = attribute_score_fn(gender, age)
         res = cluster(X, algo, cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
                       cfg.seed, score_fn=score_fn)
         projections[npy.stem] = {"coords2d": coords, "labels": res.labels,
                                  "metrics": M.internal_metrics(X, res.labels)}
+    extra_html = ""
+    if attr_ctx is not None:
+        extra_html = _k_selection_table(*attr_ctx, algo, cfg.part_b.clustering.k_min,
+                                        cfg.part_b.clustering.k_max, cfg.seed)
     thumbs = [image_to_data_uri(faces_dir / f"{i}.jpg", max_px=96, fmt="jpeg") for i in ids]
     html = build_viewer_html(
         projections, ids, thumbs, hover_meta=hover_meta or None,
@@ -67,8 +74,32 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
         intro=("Each point is one generated face, coloured by its KMeans cluster. Hover a "
                "point to see the face plus predicted age / gender / pose. Buttons switch the "
                "embedding model."),
-        always_show_thumbs=False, page_title="Part B — Face Cluster Viewer")
+        always_show_thumbs=False, extra_html=extra_html,
+        page_title="Part B — Face Cluster Viewer")
     out_html = out_dir / "viewer.html"
     out_html.write_text(html)
     log.info("Wrote %s", out_html)
     return out_html
+
+
+def _k_selection_table(X: np.ndarray, gender: np.ndarray, age: np.ndarray, algo: str,
+                       k_min: int, k_max: int, seed: int) -> str:
+    """HTML table comparing silhouette vs attribute (AMI) k-selection for `algo` on arcface."""
+    from src.core.metrics import external_metrics
+
+    rows = []
+    for mode, sfn in (("silhouette (geometric)", None),
+                      ("attribute (gender+age AMI)", attribute_score_fn(gender, age))):
+        res = cluster(X, algo, k_min, k_max, seed, score_fn=sfn)
+        g = external_metrics(res.labels, gender)
+        a = external_metrics(res.labels, age)
+        rows.append((mode, res.n_clusters, g["purity"], g["nmi"], a["purity"]))
+    head = ("<tr><th>k-selection</th><th>k</th><th>gender purity</th>"
+            "<th>gender NMI</th><th>age purity</th></tr>")
+    body = "".join(
+        f"<tr><td>{m}</td><td>{k}</td><td>{gp:.3f}</td><td>{gn:.3f}</td><td>{ap:.3f}</td></tr>"
+        for m, k, gp, gn, ap in rows)
+    return (f'<p style="margin-top:0"><b>Choosing k — {algo} on arcface</b>: silhouette '
+            f'(geometric separation) vs attribute-driven (maximise gender+age AMI). '
+            f'Attribute-driven is the more gender-meaningful partition:</p>'
+            f'<table class="m">{head}{body}</table>')
