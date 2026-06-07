@@ -87,6 +87,30 @@ illustrative only. *Part B* structure is continuous (gender × age × pose), so 
 
 ---
 
+## Reading the UMAP plots (and how they can mislead)
+UMAP projects the high-dim embeddings to 2D so we can *see* neighbourhood structure — which
+items sit together, whether groups are separable, how clusters relate. It's a lens, not the
+analysis. Things it does **not** faithfully preserve:
+
+- **Distance & gaps are not metric.** The space *between* clusters, and how far apart two
+  clusters look, is largely arbitrary — don't read "these two clusters are far apart / similar"
+  off the plot.
+- **Cluster size & density are distorted.** UMAP equalises densities, so a big blob isn't
+  necessarily a bigger or looser group than a small one.
+- **It can manufacture or exaggerate clusters.** On a *continuous* manifold (exactly Part B),
+  UMAP tends to tear the cloud into tidy islands that look more discrete than the data is —
+  which is why we trust HDBSCAN's "no dense clusters" and the metrics over the picture.
+- **Layout depends on hyperparameters & seed** (`n_neighbors`, `min_dist`); we fix the seed
+  for reproducibility, but a different `n_neighbors` would redraw it.
+
+**Most important caveat for this project:** we **cluster on the full-dimensional embeddings**,
+not on the 2D coordinates — UMAP is only for display. So a point can sit visually *inside*
+another cluster's region yet be correctly labelled by the high-D clustering. The colours
+(cluster labels) are the truth; the 2D positions are an approximation. Treat the UMAP scatter
+as a qualitative map to explore alongside the metrics, never as the evidence itself.
+
+---
+
 ## Engineering highlights (brief)
 - **Pluggable `FeatureExtractor` protocol** — adding an encoder is one module; viewers + metric
   tables pick it up automatically.
