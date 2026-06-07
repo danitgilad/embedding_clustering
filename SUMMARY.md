@@ -50,6 +50,8 @@ recover — what *attribute* structure do the embeddings hold?
 
 **Conclusion:** ArcFace embeddings are organized primarily by **gender**, secondarily by
 **age**; the space is continuous (so partitional methods impose soft, useful boundaries).
+Finer splits also surface attributes we never labelled (e.g. an **eyewear** cluster) — the
+metrics only score the labelled axes, not everything the embedding encodes.
 
 ---
 

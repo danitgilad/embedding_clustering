@@ -210,6 +210,11 @@ the clustering agrees strongly with predicted gender and moderately with age:
 Observations:
 - **Gender is the dominant axis** of the ArcFace embedding space (purity 0.81, NMI 0.27);
   age is a secondary, gradual axis.
+- **Clusters also capture attributes we never labelled**: inspecting the viewer, one of the
+  k=6 clusters is visibly **people wearing glasses**. ArcFace encodes eyewear (and likely
+  pose/expression) too — so the finer k=6 split surfaces *real* structure beyond gender/age,
+  which our gender+age pseudo-labels can't reward. A nice reminder that the internal metrics
+  only measure the *labelled* axes, not everything the embedding actually represents.
 - **Low silhouette is expected and informative**: face embeddings lie on a *continuous*
   manifold (identity/attribute space), not in well-separated blobs — so partitional methods
   impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** (everything
