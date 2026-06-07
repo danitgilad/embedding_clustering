@@ -64,15 +64,17 @@ def _age_bucket(age: float) -> str:
 
 
 def attribute_score_fn(gender_truth: np.ndarray, age_truth: np.ndarray):
-    """A k-selection objective: gender NMI + age NMI of a candidate labelling.
+    """A k-selection objective: gender AMI + age AMI of a candidate labelling.
 
     Used so the k-sweep picks the number of clusters that best aligns with the attributes we
-    actually care about (gender, age), rather than pure geometric silhouette.
+    actually care about (gender, age), rather than pure geometric silhouette. We use *adjusted*
+    mutual information (AMI), which is corrected for chance — unlike raw NMI/purity it does not
+    creep upward with more clusters, so it won't reward over-splitting to k_max.
     """
-    from sklearn.metrics import normalized_mutual_info_score as nmi
+    from sklearn.metrics import adjusted_mutual_info_score as ami
 
     def score(labels: np.ndarray) -> float:
-        return float(nmi(gender_truth, labels) + nmi(age_truth, labels))
+        return float(ami(gender_truth, labels) + ami(age_truth, labels))
 
     return score
 
@@ -87,7 +89,7 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
 
     If `montage_images` maps face id -> image path, also writes a per-cluster face montage
     for the first (primary) algorithm. `k_selection="attribute"` (when attributes exist)
-    picks k by maximizing gender+age NMI instead of silhouette.
+    picks k by maximizing gender+age AMI (chance-adjusted) instead of silhouette.
     """
     out = ensure_dir(out_dir)
     fig_dir = ensure_dir(out / "figures")
