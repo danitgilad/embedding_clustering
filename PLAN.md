@@ -8,14 +8,14 @@
 
 ## Current status
 
-**Phase:** COMPLETE. All 23 tasks (0.1–4.5) done on branch `feature/implementation` (pushed
-to github.com/danitgilad/embedding_clustering). Final whole-project review verdict: SHIP
-(no blocking issues); all 4 cosmetic findings fixed (config defaults, README CLIP, DINOv2
-guard, wired cluster montages). DEFINITIONS.md all 30 boxes ticked. Box e2e succeeded:
-Part A DINOv2 (sil 0.479) vs Point-MAE (0.407); Part B 500 faces → KMeans k=6 clusters by
-gender+age (gender purity 0.81). Fast suite 34 passed / 3 @slow deselected; @slow real-model
-tests pass on box. Figures + results.json + montages in reports/.
+**Phase:** COMPLETE — base project (23 tasks) + Phase 1 (interactive viewers) + Phase 2
+(encoder comparison) all done on branch `feature/implementation` (pushed). DEFINITIONS.md
+30/30. Fast suite 43 passed / 5 @slow deselected; @slow real-model tests pass on box.
+Results: Part A DINOv2 0.479 > Point-MAE 0.407 > CLIP 0.358; Part B ArcFace gender purity 0.81
+(k=6), generic-DINOv2 higher silhouette but not attribute-meaningful. PE-Core/OpenShape
+deferred (documented). Self-contained Plotly viewers in reports/part_*/viewer.html.
 **REMAINING:** finishing-the-branch (merge/PR decision). Token used for pushes — REVOKE it.
+**Concise project summary:** see `SUMMARY.md`.
 
 ### Interactive viewers — Phase 1 DONE (2026-06-07)
 Added self-contained Plotly HTML viewers (adapted from umap_viewer) + verbose figures, from
