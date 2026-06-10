@@ -2,12 +2,12 @@
 
 Two independent unsupervised-learning pipelines over different data modalities:
 
-- **Part A** — cluster 3D glasses assets (`.glb`) by appearance, comparing a **2D feature
-  derived from rendered images** (DINOv2) against a **3D feature derived directly from the
-  mesh** (Point-MAE).
+- **Part A** — cluster 3D glasses assets (`.glb`) by appearance, comparing **2D features
+  derived from rendered images** (DINOv2, CLIP) against a **3D feature derived directly from
+  the mesh** (Point-MAE).
 - **Part B** — generate a dataset of AI faces, embed them with a pretrained face model
-  (InsightFace / ArcFace), then **discover and characterize** the natural attribute
-  groupings (gender, age, …).
+  (InsightFace / ArcFace, plus a generic-DINOv2 ablation), then **discover and characterize**
+  the natural attribute groupings (gender, age, …).
 
 Both parts share one pipeline — `extract → reduce → cluster → evaluate → visualize` — so the
 only thing that differs between feature types is the extractor. Everything downstream is held
@@ -86,7 +86,7 @@ python main.py part-a render
 python main.py part-a extract
 python main.py part-a cluster
 
-# Part B (faces): generate -> extract (ArcFace) -> cluster -> characterize -> visualize
+# Part B (faces): generate -> extract (ArcFace + generic-DINOv2) -> cluster -> characterize -> visualize
 python main.py part-b generate --n 500
 python main.py part-b all
 
