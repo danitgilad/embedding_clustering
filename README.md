@@ -188,9 +188,13 @@ identity signal to recover — the only structure to find is **attributes**.
 2. **Model — InsightFace `buffalo_l` (ArcFace).** Chosen because it is face-specialized and,
    per face, returns a 512-d ArcFace embedding **plus** predicted age/gender/pose. We cluster
    the embedding and use the attributes as *evidence* to characterize and validate clusters.
+   As an **ablation**, we also embed the same faces with a **generic DINOv2** backbone
+   (`facebook/dinov2-base`) to test whether a face-specialized model clusters faces better
+   than a general one (it has no attributes, so it's clustered by silhouette only).
 3. **Cluster** the embeddings identically to Part A (standardize → L2-norm → KMeans /
-   Agglomerative / HDBSCAN), and validate against the model's age/gender predictions as
-   pseudo-labels (NMI / ARI / purity).
+   Agglomerative / HDBSCAN). For ArcFace, *k* can be chosen by silhouette or by **attribute
+   alignment** (see "Choosing k"); clusters are validated against the model's age/gender
+   predictions as pseudo-labels (NMI / ARI / purity / AMI).
 
 **Findings — the clusters organize by gender and age.** KMeans (k = 6) yields:
 
