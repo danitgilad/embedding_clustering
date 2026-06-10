@@ -30,6 +30,10 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
     projections: dict[str, dict] = {}
     um = cfg.reduce.umap
     algo = cfg.part_a.clustering.algorithms[0]
+    # which encoders are the 2D (render-based) feature vs the 3D (mesh-based) feature — this
+    # is the whole point of Part A, so tag each toggle/metric-row with its modality.
+    modality = {n: "2D · render" for n in cfg.part_a.encoders_2d}
+    modality.update({n: "3D · mesh" for n in cfg.part_a.encoders_3d})
     for npy in npys:
         emb = load_embeddings(npy.stem, out_dir)
         if ids is None:
@@ -39,20 +43,26 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
         X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
         coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
         res = cluster(X, algo, cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max, cfg.seed)
-        projections[npy.stem] = {"coords2d": coords, "labels": res.labels,
-                                 "metrics": M.internal_metrics(X, res.labels)}
+        label = f"{npy.stem} · {modality.get(npy.stem, '?')}"
+        projections[label] = {"coords2d": coords, "labels": res.labels,
+                              "metrics": M.internal_metrics(X, res.labels)}
     thumbs = [image_to_data_uri(render_dir / f"{sanitize_id(i)}_v0.png", max_px=128) for i in ids]
     # coloured renders (textures baked) used only in the larger hover popup; fall back to the
     # grey on-plot thumbnail if a coloured render is missing.
     colored_dir = render_dir / "colored"
     hover_thumbs = [image_to_data_uri(colored_dir / f"{sanitize_id(i)}_v0.png", max_px=256)
                     or thumbs[k] for k, i in enumerate(ids)]
+    twod = ", ".join(cfg.part_a.encoders_2d)
+    threed = ", ".join(cfg.part_a.encoders_3d)
     html = build_viewer_html(
         projections, ids, thumbs, hover_meta=None,
         title="Part A — 3D glasses: 2D-vs-3D feature clusters",
-        intro=("Each point is one glasses asset, shown as its rendered thumbnail on a "
-               "cluster-coloured card (grey on the plot). Hover a point for a larger, "
-               "colour render + its id. Buttons switch the feature/encoder."),
+        intro=(f"Each point is one glasses asset (grey render on the plot; hover for a larger "
+               f"colour render + id). <b>The point of Part A is 2D vs 3D features:</b> the "
+               f"<b>2D · render</b> features (<b>{twod}</b>) come from the rendered images; the "
+               f"<b>3D · mesh</b> feature (<b>{threed}</b>) is computed directly from the mesh, "
+               f"with no rendering. Each toggle button and metric-table row is tagged 2D/3D — "
+               f"switch between them to compare."),
         always_show_thumbs=True, thumb_scale=2.0, hover_thumbs=hover_thumbs,
         page_title="Part A — Glasses Cluster Viewer")
     out_html = out_dir / "viewer.html"
