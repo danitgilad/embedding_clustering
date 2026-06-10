@@ -14,6 +14,17 @@ def test_to_single_mesh_applies_graph_transform():
     # concatenation would leave it near x=0.
     assert mesh.vertices[:, 0].mean() > 5.0
 
+
+def test_colored_single_mesh_applies_transform_and_has_colors():
+    # The coloured path (manual concatenate) must also apply the scene-graph transform.
+    box = trimesh.creation.box(extents=(1, 1, 1))
+    T = np.eye(4); T[:3, 3] = [10.0, 0.0, 0.0]
+    scene = trimesh.Scene()
+    scene.add_geometry(box, transform=T)
+    mesh = to_single_mesh(scene, bake_texture_color=True)
+    assert mesh.vertices[:, 0].mean() > 5.0
+    assert len(mesh.visual.vertex_colors) == len(mesh.vertices)
+
 def _scene_with_two_boxes():
     a = trimesh.creation.box(extents=(1, 1, 1))
     b = trimesh.creation.box(extents=(1, 1, 1)); b.apply_translation([3, 0, 0])

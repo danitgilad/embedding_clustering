@@ -37,16 +37,57 @@ def to_single_mesh(obj: trimesh.Scene | trimesh.Trimesh,
         return obj
     if not obj.geometry:
         raise ValueError("GLB contains no mesh geometry")
-    if bake_texture_color:
-        for geo in obj.geometry.values():
-            try:
-                geo.visual = geo.visual.to_color()
-            except Exception as exc:  # noqa: BLE001 - colour baking is best-effort
-                log.debug("texture->colour bake failed (%s); leaving uncoloured", exc)
-    dumped = obj.dump(concatenate=True)
-    if not isinstance(dumped, trimesh.Trimesh):
+    merged = _colored_single_mesh(obj) if bake_texture_color else obj.dump(concatenate=True)
+    if not isinstance(merged, trimesh.Trimesh):
         raise ValueError("GLB did not concatenate to a single mesh")
-    return dumped
+    return merged
+
+
+def _colored_single_mesh(scene: trimesh.Scene) -> trimesh.Trimesh:
+    """Flatten a Scene to one Trimesh with baked vertex colours, applying each node's
+    scene-graph transform manually and merging with ``trimesh.util.concatenate``.
+
+    We avoid ``Scene.dump(concatenate=True)`` on the coloured path because its visual-merge
+    overflows on some GLBs (`index N out of bounds for axis 0 with size 4`). Applying the
+    transforms ourselves keeps geometry correct (the reason we normally avoid util.concatenate)
+    while sidestepping the buggy colour merge.
+    """
+    parts = []
+    for node in scene.graph.nodes_geometry:
+        transform, geom_name = scene.graph[node]
+        geo = scene.geometry[geom_name].copy()
+        geo.apply_transform(transform)
+        geo.visual = _bake_geometry_color(geo)
+        parts.append(geo)
+    return trimesh.util.concatenate(parts)
+
+
+def _bake_geometry_color(geo: trimesh.Trimesh):
+    """Convert one geometry's texture to vertex colours (best-effort, merge-safe).
+
+    Clamps UVs into [0, 1) first — trimesh's ``to_color`` indexes an H×W texture and overflows
+    when a UV is exactly 1.0 (`index 1024 ... size 1024`). If sampling still fails (e.g. a 1-D /
+    greyscale texture), falls back to a flat ColorVisuals from the material's main colour, so
+    EVERY geometry becomes ColorVisuals and ``Scene.dump(concatenate=True)`` merges cleanly
+    instead of aborting or flattening to a single colour.
+    """
+    vis = geo.visual
+    try:
+        uv = getattr(vis, "uv", None)
+        if uv is not None:
+            vis.uv = np.clip(np.asarray(uv, dtype=float), 0.0, 1.0 - 1e-6)
+        # to_color() is LAZY — force vertex_colors here so a sampling failure is caught now
+        # (not later on access) and we return a concrete (non-lazy) ColorVisuals.
+        colors = np.asarray(vis.to_color().vertex_colors)
+        if colors.ndim != 2 or len(colors) != len(geo.vertices):
+            raise ValueError("degenerate vertex colours")
+        return trimesh.visual.ColorVisuals(geo, vertex_colors=colors)
+    except Exception as exc:  # noqa: BLE001 - per-geometry colour bake is best-effort
+        log.debug("texture->colour bake failed (%s); flat material-colour fallback", exc)
+        mc = getattr(getattr(vis, "material", None), "main_color", None)
+        rgba = np.asarray(mc if mc is not None else (150, 150, 150, 255), dtype=np.uint8)
+        return trimesh.visual.ColorVisuals(
+            geo, vertex_colors=np.tile(rgba, (len(geo.vertices), 1)))
 
 
 def sample_surface_points(mesh: trimesh.Trimesh, n_points: int, seed: int) -> np.ndarray:
