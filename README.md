@@ -17,6 +17,12 @@ the extractor, so any difference in cluster quality is attributable to the embed
 That controlled setup is what makes the **encoder-vs-encoder comparison within a part** fair.
 (Part A and Part B are independent tasks on different data and are not compared to each other.)
 
+This is real code reuse: the downstream is the shared `src/core/` package
+(`reduce`/`cluster`/`metrics`/`visualize`), consumed by both parts through one
+`FeatureExtractor` protocol. The per-part orchestrators `src/part_a/pipeline.py` and
+`src/part_b/pipeline.py` are separate thin wrappers that call those same core modules — Part B's
+just additionally does attribute characterization + pseudo-label validation that Part A doesn't need.
+
 ## Project structure
 
 ```
