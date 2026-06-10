@@ -34,13 +34,17 @@ identical, which is what makes the comparisons fair.
 │   ├── part_a/              # 3D glasses
 │   │   ├── mesh_io.py       # load .glb -> single mesh; surface point sampling
 │   │   ├── render.py        # triangulated-mesh multi-view renderer (matplotlib, headless)
-│   │   ├── extractors/dinov2.py        # renders -> DINOv2 embedding (2D)
+│   │   ├── extractors/dinov2.py        # renders -> DINOv2 embedding (2D, primary)
+│   │   ├── extractors/clip.py          # renders -> CLIP embedding (2D, comparison)
 │   │   ├── extractors/point_mae.py     # sampled points -> Point-MAE embedding (3D)
 │   │   ├── extractors/_point_mae_backbone.py  # CPU pure-torch Point-MAE encoder
+│   │   ├── viewer.py                   # build the Part A interactive HTML
 │   │   └── pipeline.py
 │   ├── part_b/              # faces
 │   │   ├── generate.py      # rate-limited TPDNE download + hash-dedup
 │   │   ├── extractors/arcface.py       # InsightFace -> 512-d embedding + age/gender/pose
+│   │   ├── extractors/dinov2_generic.py  # DINOv2 on faces (generic-backbone ablation)
+│   │   ├── viewer.py                   # build the Part B interactive HTML
 │   │   └── pipeline.py
 │   └── utils/               # seeding, io helpers
 ├── tests/                   # pytest (fast suite; real-model tests marked @slow)
@@ -60,9 +64,9 @@ bash scripts/setup_encoders.sh            # downloads the Point-MAE pretrain che
 ```
 
 Notes:
-- **Pretrained weights download on first use**: DINOv2 (`facebook/dinov2-base`) via
-  HuggingFace; InsightFace `buffalo_l` via the insightface model zoo. Only the Point-MAE
-  checkpoint is fetched explicitly (`setup_encoders.sh`).
+- **Pretrained weights download on first use**: DINOv2 (`facebook/dinov2-base`) and CLIP
+  (`openai/clip-vit-base-patch32`) via HuggingFace; InsightFace `buffalo_l` via the insightface
+  model zoo. Only the Point-MAE checkpoint is fetched explicitly (`setup_encoders.sh`).
 - **Point-MAE runs CPU-only here.** The upstream repo couples its grouping to CUDA ops
   (`knn_cuda`, pointnet2 FPS) and imports a CUDA chamfer extension at import time, so it
   cannot run CPU-only as published. `src/part_a/extractors/_point_mae_backbone.py` is a
@@ -126,25 +130,27 @@ labelled with the cluster's stats) are also written under `reports/` for quick a
 
 ## Part A — 3D glasses clustering
 
-**Goal.** Group 14 eyewear `.glb` assets by appearance, and compare how well a *2D*
-(render-based) feature and a *3D* (mesh-based) feature each capture that similarity.
+**Goal.** Group 14 eyewear `.glb` assets by appearance, and compare how well **2D**
+(render-based) features and a **3D** (mesh-based) feature each capture that similarity. We run
+two 2D encoders (DINOv2, CLIP) and one 3D encoder (Point-MAE).
 
 **Pipeline.**
 1. **Load** each `.glb` with `trimesh` and flatten the scene to a single mesh **applying the
    scene-graph node transforms** (`Scene.dump(concatenate=True)` — see Challenges).
-2. **2D feature (DINOv2).** Render each asset from 4 fixed viewpoints off the *triangulated
-   mesh surface* (matplotlib `Poly3DCollection`, headless, supersampled + LANCZOS
-   downscaled). Each view is embedded with a frozen `facebook/dinov2-base` ViT (CLS token)
-   and the views are mean-pooled to one 768-d vector.
+2. **2D features (DINOv2 + CLIP).** Render each asset from 4 fixed viewpoints off the
+   *triangulated mesh surface* (matplotlib `Poly3DCollection`, headless, supersampled +
+   LANCZOS). Each view is embedded with a frozen vision encoder and the views are mean-pooled
+   to one vector per asset. We use **DINOv2** (`facebook/dinov2-base`, CLS token → 768-d) as
+   the primary 2D feature and **CLIP** (`openai/clip-vit-base-patch32`, image features → 512-d)
+   as a second 2D encoder, to test whether *any* 2D render feature wins or DINOv2 specifically.
 3. **3D feature (Point-MAE).** Sample 1024 points from the mesh surface and encode them with
    the pretrained Point-MAE encoder (pure-torch, CPU) into a 768-d vector
    (max ++ mean pool over group tokens). No rendering involved.
 4. **Cluster** each embedding identically: standardize → L2-normalize → KMeans and
    Agglomerative, with *k* chosen by best cosine silhouette over k∈[2,8].
 
-**Findings.** All feature types produce coherent clusters; the **2D render-based DINOv2
-feature separates the glasses most cleanly**. Three encoders are compared (a second 2D
-encoder, CLIP, was added — see "Encoder comparison"):
+**Findings.** All three encoders produce coherent clusters; the **2D render-based DINOv2
+feature separates the glasses most cleanly**:
 
 | Feature (KMeans)        | k | silhouette ↑ | Davies-Bouldin ↓ | Calinski-Harabasz ↑ |
 |-------------------------|---|--------------|------------------|---------------------|
