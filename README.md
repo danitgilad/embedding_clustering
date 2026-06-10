@@ -9,9 +9,13 @@ Two independent unsupervised-learning pipelines over different data modalities:
   (InsightFace / ArcFace, plus a generic-DINOv2 ablation), then **discover and characterize**
   the natural attribute groupings (gender, age, …).
 
-Both parts share one pipeline — `extract → reduce → cluster → evaluate → visualize` — so the
-only thing that differs between feature types is the extractor. Everything downstream is held
-identical, which is what makes the comparisons fair.
+Both parts are built on one pipeline — `extract → reduce → cluster → evaluate → visualize`.
+Within each part we compare several encoders (Part A: DINOv2 / CLIP / Point-MAE; Part B:
+ArcFace / generic-DINOv2). Because every encoder feeds the **identical** downstream — same
+preprocessing, UMAP, clustering algorithm + k-selection, and metrics — the *only* variable is
+the extractor, so any difference in cluster quality is attributable to the embedding itself.
+That controlled setup is what makes the **encoder-vs-encoder comparison within a part** fair.
+(Part A and Part B are independent tasks on different data and are not compared to each other.)
 
 ## Project structure
 
