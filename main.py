@@ -88,8 +88,9 @@ def _run_part_a(cfg, stage: str) -> None:
                 montage_images=montage)
             log.info("Part A %s: %s", ext.name, res)
     if stage in ("viewer", "all"):
-        from src.part_a.viewer import build_part_a_viewer
+        from src.part_a.viewer import build_part_a_overview, build_part_a_viewer
         build_part_a_viewer(cfg, out, render_dir)
+        build_part_a_overview(cfg, out, render_dir)
 
 
 def _run_part_b(cfg, stage: str) -> None:
