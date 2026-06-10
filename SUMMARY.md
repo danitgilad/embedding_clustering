@@ -12,10 +12,10 @@ extractor changes between tasks; everything downstream is held identical so comp
 better capture "similar-looking glasses"?
 
 **Flow & choices**
-- Render each `.glb` from 4 views off the **triangulated mesh** (smoother than a point cloud).
-- **2D feature:** frozen **DINOv2** on the renders (strong general visual embedding), views mean-pooled.
-- **3D feature:** **Point-MAE** on points sampled from the mesh surface (self-supervised, pure geometry — the 3D analogue of DINOv2). No rendering.
-- Later added **CLIP** as a 2nd 2D encoder to test whether *any* 2D encoder wins, or DINOv2 specifically.
+- Render each `.glb` from 4 views off the **triangulated mesh**, **greyscale** (form + shading, no colour).
+- **2D feature:** frozen **DINOv2** on the grey renders, views mean-pooled (+ **CLIP** as a 2nd 2D encoder, to test whether *any* 2D encoder wins or DINOv2 specifically).
+- **3D feature:** **Point-MAE** on *xyz* points sampled from the mesh surface (self-supervised, pure geometry — the 3D analogue of DINOv2).
+- **Colour & texture are NOT used by any encoder** — the grey renders and xyz points carry only *shape*. (The colour shown in the viewer/`part_a_overview.png` is for human inspection only; the algorithms never see it. Trade-off: for true *appearance* similarity colour would matter.)
 
 **Results (KMeans, cosine silhouette ↑)**
 
@@ -25,9 +25,10 @@ better capture "similar-looking glasses"?
 | Point-MAE (3D) | 0.407 |
 | CLIP (2D) | 0.358 |
 
-**Conclusion:** DINOv2 separates best, but **CLIP — also 2D — does worst**. So it isn't
-"2D beats 3D"; it's that **DINOv2's fine-grained visual features** beat both pure geometry
-and CLIP's coarser, language-aligned semantics. (n=14 → relative, not absolute.)
+**Conclusion:** this is really **shape-from-2D-render vs shape-from-3D-points** (colour is not a
+factor). DINOv2 separates best, but **CLIP — also 2D — does worst**, so it isn't "2D beats 3D";
+it's that **DINOv2's fine-grained features** beat both pure geometry and CLIP's coarser,
+language-aligned semantics. (n=14 → relative, not absolute.)
 
 ---
 

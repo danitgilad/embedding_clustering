@@ -17,7 +17,7 @@ the extractor, so any difference in cluster quality is attributable to the embed
 That controlled setup is what makes the **encoder-vs-encoder comparison within a part** fair.
 (Part A and Part B are independent tasks on different data and are not compared to each other.)
 
-This is real code reuse: the downstream is the shared `src/core/` package
+This allows code reuse: the downstream is the shared `src/core/` package
 (`reduce`/`cluster`/`metrics`/`visualize`), consumed by both parts through one
 `FeatureExtractor` protocol. The per-part orchestrators `src/part_a/pipeline.py` and
 `src/part_b/pipeline.py` are separate thin wrappers that call those same core modules — Part B's
@@ -106,7 +106,10 @@ python main.py --log-level DEBUG --set part_b.n_images=200 part-b all
 
 Outputs land under `outputs/<part>/`: cached embeddings (`<encoder>.npy` + `ids.json`),
 figures (`figures/*.png`), and `<encoder>_results.json` (metrics + per-cluster profiles).
-The committed copies used in this README live under `reports/`.
+**`outputs/` (and `data/`) are git-ignored** — they're generated when you run a stage, so a
+fresh checkout has them empty. Our runs were executed on a remote CPU box, and the result
+files this README references were copied into the committed **`reports/`** folder (the only
+result artifacts in git).
 
 Configuration lives entirely in `config/default.yaml` and is loaded into typed dataclasses;
 any value can be overridden from the CLI with `--set dotted.key=value`.
@@ -148,11 +151,12 @@ two 2D encoders (DINOv2, CLIP) and one 3D encoder (Point-MAE).
 1. **Load** each `.glb` with `trimesh` and flatten the scene to a single mesh **applying the
    scene-graph node transforms** (`Scene.dump(concatenate=True)` — see Challenges).
 2. **2D features (DINOv2 + CLIP).** Render each asset from 4 fixed viewpoints off the
-   *triangulated mesh surface* (matplotlib `Poly3DCollection`, headless, supersampled +
-   LANCZOS). Each view is embedded with a frozen vision encoder and the views are mean-pooled
-   to one vector per asset. We use **DINOv2** (`facebook/dinov2-base`, CLS token → 768-d) as
-   the primary 2D feature and **CLIP** (`openai/clip-vit-base-patch32`, image features → 512-d)
-   as a second 2D encoder, to test whether *any* 2D render feature wins or DINOv2 specifically.
+   *triangulated mesh surface* — **greyscale** (shape + shading, no colour/texture) — and embed
+   each view with a frozen vision encoder, mean-pooling the views to one vector per asset. We
+   use **DINOv2** (`facebook/dinov2-base`, CLS token → 768-d) as the primary 2D feature and
+   **CLIP** (`openai/clip-vit-base-patch32`, image features → 512-d) as a second 2D encoder, to
+   test whether *any* 2D render feature wins or DINOv2 specifically. (Colour is not used — see
+   the note under Findings.)
 3. **3D feature (Point-MAE).** Sample 1024 points from the mesh surface and encode them with
    the pretrained Point-MAE encoder (pure-torch, CPU) into a 768-d vector
    (max ++ mean pool over group tokens). No rendering involved.
@@ -170,19 +174,33 @@ feature separates the glasses most cleanly**:
 
 (Agglomerative shows the same DINOv2 > Point-MAE ordering: 0.489 vs 0.407 silhouette.)
 
-Interpretation: DINOv2 sees colour, material and lens/rim styling from the renders, which
-dominates human perception of "similar-looking glasses"; Point-MAE sees pure geometry, so it
-groups by frame shape/proportion but is blind to colour and finish. Notably **CLIP — also a
-2D render feature — separates *worse* than both** (and collapses to just k=3): its
-language-aligned embedding is coarser/more semantic ("a pair of glasses") and less sensitive
-to the fine visual differences that distinguish these similar products. So "2D beats 3D" here
-is really "DINOv2's fine-grained visual features beat both pure geometry and CLIP's coarse
-semantics." **n = 14 is small, so these numbers are illustrative/relative, not absolute.**
+Interpretation: the 2D features (DINOv2, CLIP) embed **greyscale** renders, so they capture
+the glasses' **form and silhouette as projected to 2D** (rim shape, lens curvature, frame
+proportions revealed by shading) — *not* colour or material. Point-MAE captures the **raw 3D
+geometry** of the surface points. So this is really a **shape-from-2D-render vs
+shape-from-3D-points** comparison, and **colour/texture is not a factor for any encoder** (see
+the note below). DINOv2's fine-grained 2D features resolve the form best; **CLIP — also a 2D
+render feature — separates *worse*** (and collapses to k=3): its language-aligned embedding is
+coarser/semantic ("a pair of glasses") and under-resolves these similar products. Point-MAE's
+point geometry lands in between. **n = 14 is small, so these numbers are illustrative.**
 
-**Figures** (`reports/part_a/`): `dinov2_kmeans_umap.png`, `point_mae_kmeans_umap.png`
-(UMAP scatter coloured by cluster), `*_metrics.png` (metric tables), and
-`*_clusters_montage.png` — thumbnail grids of the actual glasses grouped by cluster, which
-make the appearance-based grouping directly inspectable.
+> **Note — colour and texture are intentionally NOT used.** The renders fed to DINOv2/CLIP are
+> **greyscale** (form + shading only) and Point-MAE consumes **xyz surface points** — so all
+> three encoders cluster by **shape/geometry, never colour or material**. The *coloured*
+> glasses you see in the viewer and `part_a_overview.png` are rendered that way **for human
+> inspection only**; the algorithms never see them. Trade-off: for true *appearance* similarity
+> colour would matter (a black vs a red copy of the same frame look different but would embed
+> almost identically here) — feeding texture-coloured renders into the 2D encoders would be a
+> natural extension.
+
+**Figures** (`reports/part_a/`): the main one is **`part_a_overview.png`** — a single panel
+per encoder where each glasses **render is placed at its UMAP point**, framed in its
+**cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics. It
+makes "which glasses landed in which cluster, for each feature" inspectable at a glance (and
+shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7). Also written:
+`*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables), `*_clusters_montage.png`
+(per-cluster thumbnail grids). The interactive `viewer.html` is the richest view (hover for a
+large colour render + id).
 
 ---
 
