@@ -15,6 +15,7 @@ better capture "similar-looking glasses"?
 - Render each `.glb` from 4 views off the **triangulated mesh**, **greyscale** (form + shading, no colour).
 - **2D feature:** frozen **DINOv2** on the grey renders, views mean-pooled (+ **CLIP** as a 2nd 2D encoder, to test whether *any* 2D encoder wins or DINOv2 specifically).
 - **3D feature:** **Point-MAE** on *xyz* points sampled from the mesh surface (self-supervised, pure geometry — the 3D analogue of DINOv2).
+- Two further optional encoders were **attempted but deferred** (documented, not stubbed): **PE-Core** (2D) needs Python ≥3.11 (the box runs 3.10); **OpenShape/ULIP-2** (3D) is CUDA-coupled PointBERT and Point-MAE already covers the learned-3D feature.
 - **Colour & texture are NOT used by any encoder** — the grey renders and xyz points carry only *shape*. (The colour shown in the viewer/`part_a_overview.png` is for human inspection only; the algorithms never see it. Trade-off: for true *appearance* similarity colour would matter.)
 
 **Results (KMeans, cosine silhouette ↑)**
