@@ -120,7 +120,9 @@ def _run_part_b(cfg, stage: str) -> None:
     if stage in ("viewer", "all"):
         from src.part_b.viewer import build_part_b_overview, build_part_b_viewer
         build_part_b_viewer(cfg, out, data_dir)
-        build_part_b_overview(cfg, out, data_dir)
+        for enc in cfg.part_b.encoders:
+            if (out / f"{enc}.npy").exists():
+                build_part_b_overview(cfg, out, data_dir, encoder=enc)
 
 
 def main(argv: list[str] | None = None) -> None:
