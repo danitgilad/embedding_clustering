@@ -118,8 +118,9 @@ def _run_part_b(cfg, stage: str) -> None:
             log.info("Part B %s: %s", ext.name,
                      {k: v for k, v in res.items() if not k.endswith("__profile")})
     if stage in ("viewer", "all"):
-        from src.part_b.viewer import build_part_b_viewer
+        from src.part_b.viewer import build_part_b_overview, build_part_b_viewer
         build_part_b_viewer(cfg, out, data_dir)
+        build_part_b_overview(cfg, out, data_dir)
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -19,6 +19,7 @@ from src.core.embedding_store import load_embeddings
 from src.core.html_viewer import build_viewer_html, image_to_data_uri
 from src.core.reduce import preprocess, umap_2d
 from src.part_b.pipeline import _age_bucket, attribute_score_fn
+from src.utils.io import ensure_dir
 
 log = logging.getLogger(__name__)
 
@@ -110,3 +111,82 @@ def _k_selection_table(X: np.ndarray, gender: np.ndarray, age: np.ndarray, algo:
             f'(geometric separation) vs attribute-driven (maximise gender+age AMI). '
             f'Attribute-driven is the more gender-meaningful partition:</p>'
             f'<table class="m">{head}{body}</table>')
+
+
+def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Path,
+                          out_path: str | Path | None = None, faces_per_cluster: int = 5) -> Path:
+    """Static PNG: the ArcFace UMAP shown three ways — coloured by cluster (with a few sample
+    faces per cluster overlaid), by predicted gender, and by predicted age — so it's visible
+    that the clusters track gender + age. Axis-labelled; metrics in the cluster-panel title."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.offsetbox import AnnotationBbox, OffsetImage
+    from PIL import Image
+
+    out_dir, faces_dir = Path(out_dir), Path(faces_dir)
+    emb = load_embeddings("arcface", out_dir)
+    ids = emb.ids
+    X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
+    um = cfg.reduce.umap
+    coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
+    raw = json.loads((out_dir / "arcface_attributes.json").read_text())
+    gender = np.array([raw.get(i, {}).get("gender", "?") for i in ids])
+    age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in ids])
+    algo = cfg.part_b.clustering.algorithms[0]
+    score_fn = (attribute_score_fn(gender, age)
+                if cfg.part_b.clustering.k_selection == "attribute" else None)
+    res = cluster(X, algo, cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
+                  cfg.seed, score_fn=score_fn)
+    labels = np.asarray(res.labels)
+    met = M.internal_metrics(X, labels)
+    gp = M.external_metrics(labels, gender)["purity"]
+
+    cmap = plt.get_cmap("tab10")
+    fig, axes = plt.subplots(1, 3, figsize=(21, 7), dpi=130)
+
+    def _panel(ax, values, title, faces=False):
+        cats = sorted(set(values.tolist()))
+        col = {c: cmap(i % 10) for i, c in enumerate(cats)}
+        for c in cats:
+            mm = values == c
+            lab = f"{c} (n={int(mm.sum())})"
+            ax.scatter(coords[mm, 0], coords[mm, 1], s=14, color=col[c], label=lab, alpha=0.7)
+        if faces:
+            for c in cats:
+                idx = np.where(values == c)[0]
+                centroid = X[idx].mean(0)
+                near = idx[np.argsort(((X[idx] - centroid) ** 2).sum(1))[:faces_per_cluster]]
+                for j in near:
+                    p = faces_dir / f"{ids[j]}.jpg"
+                    if not p.exists():
+                        continue
+                    im = Image.open(p).convert("RGB"); im.thumbnail((46, 46), Image.LANCZOS)
+                    ab = AnnotationBbox(OffsetImage(np.asarray(im), zoom=1.0),
+                                        (coords[j, 0], coords[j, 1]), frameon=True, pad=0.05,
+                                        bboxprops=dict(edgecolor=col[c], lw=2))
+                    ax.add_artist(ab)
+        ax.legend(fontsize=8, loc="best")
+        ax.set_title(title, fontsize=12)
+        ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2")
+        ax.set_xticks([]); ax.set_yticks([])
+
+    _panel(axes[0], labels,
+           f"clusters ({algo}, k={len(set(labels.tolist()))}) — "
+           f"silhouette={met['silhouette']:.3f} · gender purity={gp:.3f}", faces=True)
+    _panel(axes[1], gender, "predicted gender")
+    _panel(axes[2], age, "predicted age")
+
+    fig.suptitle("Part B — ArcFace face embedding (UMAP): clusters vs gender vs age", fontsize=13)
+    fig.text(0.5, 0.945,
+             "ArcFace embeds the colour face crop. Same layout coloured by KMeans cluster / "
+             "predicted gender / predicted age — the clusters clearly track gender (and age). "
+             "Faces on the left panel are samples nearest each cluster centroid.",
+             ha="center", va="top", fontsize=9, style="italic", color="#333")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "part_b_overview.png"
+    ensure_dir(out_path.parent)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    log.info("Wrote %s", out_path)
+    return out_path

@@ -23,7 +23,9 @@ def scatter_2d(points: np.ndarray, labels: np.ndarray, out_path: str | Path,
     out_path = Path(out_path)
     fig, ax = plt.subplots(figsize=(6, 5), dpi=120)
     sc = ax.scatter(points[:, 0], points[:, 1], c=labels, cmap="tab10", s=40)
-    ax.set_title(title); ax.set_xticks([]); ax.set_yticks([])
+    ax.set_title(title)
+    ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2")
+    ax.set_xticks([]); ax.set_yticks([])
     fig.colorbar(sc, ax=ax, label="cluster")
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
     return out_path
