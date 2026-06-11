@@ -154,9 +154,11 @@ two 2D encoders (DINOv2, CLIP) and one 3D encoder (Point-MAE).
 
 **Dataset exploration.** `part-a explore` inspects every GLB's internal structure (mesh
 components, vertex/face counts, materials, texturing, bounding extent) and writes
-[`reports/part_a/dataset_exploration.md`](reports/part_a/dataset_exploration.md). This is what
-revealed the assets are **multi-component Scenes** (→ apply node transforms when flattening) and
-that materials carry **real colour** the encoders deliberately ignore.
+[`reports/part_a/dataset_exploration.md`](reports/part_a/dataset_exploration.md). It shows the
+assets are **multi-component Scenes** (4–7 mesh parts each → node transforms must be applied when
+flattening), span **~18k–55k vertices** (we sample a fixed 1024 surface points so detail is
+comparable), and are **14/14 textured** — materials carry **real colour** that the encoders
+deliberately ignore (greyscale shape / xyz geometry only).
 
 **Pipeline.**
 1. **Load** each `.glb` with `trimesh` and flatten the scene to a single mesh **applying the
@@ -195,6 +197,17 @@ render feature — separates *worse*** (and collapses to k=3): its language-alig
 coarser/semantic ("a pair of glasses") and under-resolves these similar products. Point-MAE's
 point geometry lands in between. **n = 14 is small, so these numbers are illustrative.**
 
+**Feature-distribution cross-check.** To confirm the ranking isn't an artifact of one clustering,
+[`feature_distributions.png`](reports/part_a/feature_distributions.png) measures discriminability *straight from the embeddings*: for each
+encoder we take all pairwise **cosine distances** and split them into *intra-cluster* vs
+*inter-cluster*; the gap between their means (**Δmean = mean_inter − mean_intra**) says how
+cleanly same-cluster items sit closer than different-cluster items. The ordering is **identical to
+silhouette — DINOv2 0.69 > Point-MAE 0.53 > CLIP 0.38** — and the histograms make CLIP's weakness
+visible: its intra- and inter-cluster distances **overlap heavily** (little geometric structure to
+cluster), whereas DINOv2's barely touch. An independent, *k*-agnostic view agreeing with silhouette
+is good evidence the DINOv2 > Point-MAE > CLIP result is real. (The left-hand histograms also show a
+small near-zero tail = the near-duplicate left/right frame variants.)
+
 > **Note — colour and texture are intentionally NOT used.** The renders fed to DINOv2/CLIP are
 > **greyscale** (form + shading only) and Point-MAE consumes **xyz surface points** — so all
 > three encoders cluster by **shape/geometry, never colour or material**. The *coloured*
@@ -204,17 +217,16 @@ point geometry lands in between. **n = 14 is small, so these numbers are illustr
 > almost identically here) — feeding texture-coloured renders into the 2D encoders would be a
 > natural extension.
 
-**Figures** (`reports/part_a/`): the main one is **`part_a_overview.png`** — a single panel
+**Figures** (`reports/part_a/`): the main one is **[`part_a_overview.png`](reports/part_a/part_a_overview.png)** — a single panel
 per encoder where each glasses **render is placed at its UMAP point**, framed in its
 **cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics. It
 makes "which glasses landed in which cluster, for each feature" inspectable at a glance (and
-shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7). **`feature_distributions.png`**
-analyses each encoder's embedding *directly* — the spread of pairwise cosine distances and the
-**intra- vs inter-cluster** gap (Δmean), a label-free read on how discriminative each feature is
-(a wider gap = more separable; it tracks the silhouette ordering DINOv2 > Point-MAE > CLIP).
-Also written: `*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables),
-`*_clusters_montage.png` (per-cluster thumbnail grids). The interactive `viewer.html` is the
-richest view (hover for a large colour render + id).
+shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
+**[`feature_distributions.png`](reports/part_a/feature_distributions.png)** is the figure behind
+the *Feature-distribution cross-check* above (pairwise-distance spread + the intra/inter Δmean per
+encoder). Also written: `*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables),
+`*_clusters_montage.png` (per-cluster thumbnail grids). The interactive
+**[`viewer.html`](reports/part_a/viewer.html)** is the richest view (hover for a large colour render + id).
 
 ---
 
@@ -282,7 +294,8 @@ Observations:
   (purity 0.602 vs 0.546) and, crucially, *returns* the per-face predicted age/gender/pose —
   the pseudo-labels we use to interpret and validate every clustering (DINOv2 gives none). So
   the specialization buys the attribute **read-outs**, not better gender grouping. See
-  `part_b_overview_dinov2_generic.png`; both encoders are toggles in the Part B viewer.
+  [`part_b_overview_dinov2_generic.png`](reports/part_b/part_b_overview_dinov2_generic.png); both
+  encoders are toggles in the Part B viewer.
 
 **Choosing k — silhouette vs attribute-driven.** The detailed k=6 result above is the
 *silhouette* selection. Because the structure is continuous and what we care about is
@@ -294,15 +307,16 @@ partition than silhouette's k=6. (This is now the default; silhouette is one fla
 Agglomerative under AMI still climbs to k_max because its finer splits stay gender-coherent —
 the same continuous-manifold signature HDBSCAN showed.
 
-**Figures** (`reports/part_b/`): the main one is **`part_b_overview.png`** — the ArcFace UMAP
+**Figures** (`reports/part_b/`): the main one is **[`part_b_overview.png`](reports/part_b/part_b_overview.png)** — the ArcFace UMAP
 shown three ways (by **cluster**, **gender**, **age**) in two rows: top = coloured points only
 (unoccluded), bottom = the same layout with a dense face sample overlaid, so you can *see* the
 clusters tracking gender + age. The same figure is generated per encoder and per k-selection:
-`part_b_overview_arcface_silhouette.png` is the silhouette **k=6** partition (vs the default
-attribute **k=3**), and `part_b_overview_dinov2_generic.png` is the generic-backbone ablation.
-Also: `arcface_clusters_montage.png`
-(sample faces per cluster), `*_umap.png` scatters, `arcface_metrics.png`. Per-cluster profiles
-in `arcface_results.json`. (Unlike Part A, the encoders here embed the **colour** face crop —
+**[`part_b_overview_arcface_silhouette.png`](reports/part_b/part_b_overview_arcface_silhouette.png)**
+is the silhouette **k=6** partition (vs the default attribute **k=3**), and
+**[`part_b_overview_dinov2_generic.png`](reports/part_b/part_b_overview_dinov2_generic.png)** is the
+generic-backbone ablation. Also: [`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)
+(sample faces per cluster), `*_umap.png` scatters, [`arcface_metrics.png`](reports/part_b/arcface_metrics.png).
+Per-cluster profiles in [`arcface_results.json`](reports/part_b/arcface_results.json). (Unlike Part A, the encoders here embed the **colour** face crop —
 colour *is* used.)
 
 ---

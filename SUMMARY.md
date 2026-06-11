@@ -30,8 +30,15 @@ better capture "similar-looking glasses"?
 **Conclusion:** this is really **shape-from-2D-render vs shape-from-3D-points** (colour is not a
 factor). DINOv2 separates best, but **CLIP — also 2D — does worst**, so it isn't "2D beats 3D";
 it's that **DINOv2's fine-grained features** beat both pure geometry and CLIP's coarser,
-language-aligned semantics. (n=14 → relative, not absolute.) `feature_distributions.png` shows
-the *same* ordering label-free, as the intra- vs inter-cluster distance gap: **0.69 / 0.53 / 0.38**.
+language-aligned semantics. (n=14 → relative, not absolute.)
+
+**Cross-check (`feature_distributions.png`).** To make sure this isn't an artifact of one
+clustering, we histogram every pairwise **cosine distance** per encoder and split it into
+*intra-cluster* vs *inter-cluster*; the gap between their means (Δmean) measures how
+discriminative the features are without depending on a chosen *k*. The ranking is **identical to
+silhouette — DINOv2 0.69 > Point-MAE 0.53 > CLIP 0.38** — and CLIP's intra/inter histograms
+visibly **overlap** (little structure to cluster). An independent view agreeing with silhouette is
+strong evidence the ordering is real.
 
 ---
 
