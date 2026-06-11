@@ -258,12 +258,14 @@ Observations:
   impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** (everything
   labelled noise), which is the honest signature of a continuous space rather than a bug.
 - **Face-specialized vs generic backbone** (ablation): embedding the same 500 faces with a
-  *generic* DINOv2 gives more geometrically separated clusters (KMeans silhouette **0.195** vs
-  ArcFace's 0.045), but those clusters key on coarse image factors (pose, lighting, framing)
-  rather than identity attributes. ArcFace's lower-silhouette clusters are the ones that
-  *mean* something — validated to align with gender (purity 0.81) and age. So higher silhouette
-  ≠ more useful clustering: the face-specialized model earns its place by producing
-  *attribute-meaningful* groups. Both are toggles in the Part B viewer.
+  *generic* DINOv2 gives clusters that are **more separated *and* more gender-aligned** than
+  ArcFace (KMeans silhouette **0.195** vs 0.045; gender purity **0.896** vs 0.808, NMI 0.488 vs
+  0.270) — a general self-supervised backbone already groups faces by gender, no
+  face-specialization required. ArcFace's edge is narrower: it tracks **age** slightly better
+  (purity 0.602 vs 0.546) and, crucially, *returns* the per-face predicted age/gender/pose —
+  the pseudo-labels we use to interpret and validate every clustering (DINOv2 gives none). So
+  the specialization buys the attribute **read-outs**, not better gender grouping. See
+  `part_b_overview_dinov2_generic.png`; both encoders are toggles in the Part B viewer.
 
 **Choosing k — silhouette vs attribute-driven.** The detailed k=6 result above is the
 *silhouette* selection. Because the structure is continuous and what we care about is
@@ -276,8 +278,11 @@ Agglomerative under AMI still climbs to k_max because its finer splits stay gend
 the same continuous-manifold signature HDBSCAN showed.
 
 **Figures** (`reports/part_b/`): the main one is **`part_b_overview.png`** — the ArcFace UMAP
-shown three ways (coloured by **cluster** with sample faces overlaid, by **gender**, by
-**age**) so you can *see* the clusters tracking gender + age. Also: `arcface_clusters_montage.png`
+shown three ways (by **cluster**, **gender**, **age**) in two rows: top = coloured points only
+(unoccluded), bottom = the same layout with a dense face sample overlaid, so you can *see* the
+clusters tracking gender + age. The same figure is generated per encoder —
+`part_b_overview_dinov2_generic.png` is the generic-backbone ablation. Also:
+`arcface_clusters_montage.png`
 (sample faces per cluster), `*_umap.png` scatters, `arcface_metrics.png`. Per-cluster profiles
 in `arcface_results.json`. (Unlike Part A, the encoders here embed the **colour** face crop —
 colour *is* used.)
@@ -296,7 +301,7 @@ encoders were run as comparisons:
 | Point-MAE (mesh) | A 3D | primary | 0.407 |
 | **CLIP (render)** | A 2D | **added** | 0.358 — coarser/semantic, weakest here |
 | ArcFace | B | primary | gender purity 0.81 (attribute-meaningful) |
-| **DINOv2-generic** | B | **added** | higher silhouette (0.195) but not attribute-aligned |
+| **DINOv2-generic** | B | **added** | more separated *and* more gender-aligned (purity 0.896 > ArcFace 0.808) |
 | PE-Core (render) | A 2D | **deferred** | `perception_models` needs Python ≥3.11; box runs 3.10 |
 | OpenShape/ULIP-2 | A 3D | **deferred** | CUDA-coupled PointBERT; Point-MAE already covers learned-3D |
 

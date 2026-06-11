@@ -44,12 +44,12 @@ recover — what *attribute* structure do the embeddings hold?
   predicted age/gender/pose. The embedding is clustered; the attributes become *evidence* to
   interpret and validate clusters.
 - Added a **generic DINOv2** on the same faces as an ablation (face-specialized vs general).
-- **Colour *is* used here** — both encoders embed the colour face crop (the contrast with Part A's greyscale renders). Visual check: `part_b_overview.png` shows the UMAP coloured by cluster / gender / age side-by-side.
+- **Colour *is* used here** — both encoders embed the colour face crop (the contrast with Part A's greyscale renders). Visual check: `part_b_overview.png` shows the UMAP three ways (cluster / gender / age) in two rows — points-only on top, a dense face sample below; generated per encoder (`..._dinov2_generic.png` is the ablation).
 
 **Results**
 - KMeans k=6 splits cleanly by **gender + age** (two clusters 100% gender-pure; others stratify by age). Validated against the model's own gender labels: **purity 0.81**.
 - **HDBSCAN found no dense clusters** — the honest signature of a *continuous* embedding manifold, not a bug.
-- Generic DINOv2 gave more *separated* clusters (silhouette 0.195 vs 0.045) but they key on pose/lighting, not attributes — **higher silhouette ≠ more meaningful**. ArcFace earns its place by producing attribute-meaningful groups.
+- Generic DINOv2 (ablation) gave clusters that are **more separated *and* more gender-aligned** than ArcFace (silhouette 0.195 vs 0.045; gender purity 0.896 vs 0.808) — a general backbone already groups faces by gender. ArcFace's real edge is **age** (purity 0.602 vs 0.546) and that it *returns* the predicted age/gender/pose we validate against (DINOv2 gives none). Specialization buys the attribute **read-outs**, not better gender grouping.
 
 **Conclusion:** ArcFace embeddings are organized primarily by **gender**, secondarily by
 **age**; the space is continuous (so partitional methods impose soft, useful boundaries).
