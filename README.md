@@ -146,8 +146,9 @@ UMAP + clusters deterministically, and renders — so the HTML can be rebuilt/re
   cluster-coloured card** (umap_viewer style); hover shows the id. The side histogram is the
   **intra- vs inter-cluster** distance distribution (Δmean per encoder).
 - **Part B** — a UMAP scatter coloured by cluster; **hover any point to see that face** plus
-  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs). The side
-  histogram is the **same- vs different-gender** distance distribution (Δmean per encoder).
+  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs). Two side
+  histograms show the **same- vs different-gender** and **same- vs different-age** distance
+  distributions (Δmean per encoder), mirroring `feature_distributions.png`.
 
 Static PNGs (UMAP scatters, metric tables, and **annotated per-cluster montages** — each row
 labelled with the cluster's stats) are also written under `reports/` for quick at-a-glance review.

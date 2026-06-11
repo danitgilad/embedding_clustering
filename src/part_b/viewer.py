@@ -38,10 +38,11 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
     algo = cfg.part_b.clustering.algorithms[0]
     k_min, k_max = cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max
     attr_ctx = None   # (X, gender, age) of the first encoder with attributes, for the k-table
-    # shared gender labels (InsightFace, keyed by face id) → split the distance histogram by gender
+    # shared gender/age labels (InsightFace, keyed by face id) → split the distance histograms
     shared_attr = out_dir / "arcface_attributes.json"
-    gender_by_id = ({i: a.get("gender", "?") for i, a in json.loads(shared_attr.read_text()).items()}
-                    if shared_attr.exists() else {})
+    raw_shared = json.loads(shared_attr.read_text()) if shared_attr.exists() else {}
+    gender_by_id = {i: a.get("gender", "?") for i, a in raw_shared.items()}
+    agebucket_by_id = {i: _age_bucket(a.get("age", 0.0)) for i, a in raw_shared.items()}
     for npy in npys:
         emb = load_embeddings(npy.stem, out_dir)
         if ids is None:
@@ -50,19 +51,28 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
             raise ValueError(f"id mismatch for {npy.stem}; viewer needs a shared id order")
         X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
         coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
-        # gender-split feature-distance histogram for this encoder (independent of k-selection)
+        # feature-distance histograms for this encoder (independent of k-selection): split by
+        # gender, then by age bucket — same two attributes as feature_distributions.png
         enc_hist = None
         if gender_by_id:
             g = np.array([gender_by_id.get(i, "?") for i in emb.ids])
+            ab = np.array([agebucket_by_id.get(i, "?") for i in emb.ids])
             Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12)
             iu = np.triu_indices(len(X), k=1)
             d = (1.0 - Xn @ Xn.T)[iu]
-            same = g[iu[0]] == g[iu[1]]
-            gap = float(d[~same].mean()) - float(d[same].mean())
-            enc_hist = make_hist_spec(
-                f"Same vs different gender · Δmean = {gap:.3f} (larger = separates gender more)",
-                "cosine distance",
-                [("same gender", "#55A868", d[same]), ("different gender", "#C44E52", d[~same])])
+            sg, sa = g[iu[0]] == g[iu[1]], ab[iu[0]] == ab[iu[1]]
+            gap_g = float(d[~sg].mean()) - float(d[sg].mean())
+            gap_a = float(d[~sa].mean()) - float(d[sa].mean())
+            enc_hist = [
+                make_hist_spec(
+                    f"Same vs different gender · Δmean = {gap_g:.3f} (larger = separates gender more)",
+                    "cosine distance",
+                    [("same gender", "#55A868", d[sg]), ("different gender", "#C44E52", d[~sg])]),
+                make_hist_spec(
+                    f"Same vs different age bucket · Δmean = {gap_a:.3f} (larger = separates age more)",
+                    "cosine distance",
+                    [("same age", "#55A868", d[sa]), ("different age", "#C44E52", d[~sa])]),
+            ]
         keys_before = set(projections)
         attr_file = out_dir / f"{npy.stem}_attributes.json"
         if attr_file.exists():
@@ -104,8 +114,9 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
                "point to see the face plus predicted age / gender / pose. Buttons switch the "
                "view: ArcFace under both k-selections (attribute k=3 vs silhouette k=6) and "
                "the generic-DINOv2 encoder — toggle to compare the clusterings on one layout. "
-               "The feature-distance histogram beside the scatter (same vs different gender) "
-               "switches with the encoder — a wider gap = the embedding separates gender more."),
+               "Two feature-distance histograms beside the scatter (same vs different gender, "
+               "and same vs different age bucket) switch with the encoder — a wider gap = the "
+               "embedding separates that attribute more."),
         always_show_thumbs=False, extra_html=extra_html, hist=hist,
         page_title="Part B — Face Cluster Viewer")
     out_html = out_dir / "viewer.html"

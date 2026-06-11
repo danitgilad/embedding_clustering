@@ -72,10 +72,10 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
         same = labels[iu[0]] == labels[iu[1]]
         intra, inter = d[same], d[~same]
         gap = (float(inter.mean()) - float(intra.mean())) if len(intra) and len(inter) else float("nan")
-        hist[f"{it['name']} · {it['modality']}"] = make_hist_spec(
+        hist[f"{it['name']} · {it['modality']}"] = [make_hist_spec(
             f"Intra- vs inter-cluster distance · Δmean = {gap:.3f} (larger = more discriminative)",
             "cosine distance",
-            [("intra-cluster", "#55A868", intra), ("inter-cluster", "#C44E52", inter)])
+            [("intra-cluster", "#55A868", intra), ("inter-cluster", "#C44E52", inter)])]
     thumbs = [image_to_data_uri(render_dir / f"{sanitize_id(i)}_v0.png", max_px=128) for i in ids]
     # coloured renders (textures baked) used only in the larger hover popup; fall back to the
     # grey on-plot thumbnail if a coloured render is missing.

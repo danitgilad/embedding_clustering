@@ -109,20 +109,26 @@ def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool,
     return fig.to_json().replace("\\u002f", "/")
 
 
-def make_hist_spec(title: str, xlabel: str, named_arrays, n_bins: int = 30) -> dict:
+def make_hist_spec(title: str, xlabel: str, named_arrays, n_bins: int = 30,
+                   density: bool = True) -> dict:
     """Pre-bin several distance arrays onto a shared axis → a hist spec for the viewer.
 
     named_arrays: list of (name, color, values). Binning here (not client-side) keeps the HTML
-    small even for Part B's ~125k pairs.
+    small even for Part B's ~125k pairs. density=True normalises each series so its area = 1
+    (matching the static feature_distributions.png), making two differently-sized groups
+    comparable in shape; density=False shows raw pair counts.
     """
     arrs = [(n, c, np.asarray(v, dtype=float)) for n, c, v in named_arrays]
     allv = np.concatenate([v for _, _, v in arrs if len(v)]) if arrs else np.array([0.0])
     edges = np.linspace(float(allv.min()), float(allv.max()) or 1.0, n_bins + 1)
     centers = ((edges[:-1] + edges[1:]) / 2).tolist()
     series = [{"name": n, "color": c, "x": centers,
-               "y": (np.histogram(v, bins=edges)[0].tolist() if len(v) else [0] * n_bins)}
+               "y": (np.histogram(v, bins=edges, density=density)[0].tolist()
+                     if len(v) else [0] * n_bins),
+               "mean": (float(v.mean()) if len(v) else None)}
               for n, c, v in arrs]
-    return {"title": title, "xlabel": xlabel, "series": series}
+    return {"title": title, "xlabel": xlabel,
+            "ylabel": "density" if density else "pair count", "series": series}
 
 
 def _hist_figure_json(spec: dict) -> str:
@@ -134,11 +140,20 @@ def _hist_figure_json(spec: dict) -> str:
     for s in spec["series"]:
         fig.add_trace(go.Bar(x=s["x"], y=s["y"], name=s["name"],
                              marker_color=s["color"], opacity=0.6))
-    fig.update_layout(width=560, height=400, barmode="overlay",
+    # dashed vertical line at each series' mean (matching feature_distributions.png)
+    shapes, annos = [], []
+    for s in spec["series"]:
+        if s.get("mean") is None:
+            continue
+        shapes.append(dict(type="line", xref="x", yref="paper", x0=s["mean"], x1=s["mean"],
+                           y0=0, y1=1, line=dict(color=s["color"], width=2, dash="dash")))
+        annos.append(dict(x=s["mean"], y=1.02, xref="x", yref="paper", showarrow=False,
+                          text=f"mean {s['mean']:.2f}", font=dict(size=10, color=s["color"])))
+    fig.update_layout(width=560, height=330, barmode="overlay",
                       title=dict(text=spec["title"], font=dict(size=12)),
                       xaxis=dict(title=spec["xlabel"], zeroline=False),
-                      yaxis=dict(title="pair count", zeroline=False),
-                      bargap=0, plot_bgcolor="#f8f8f8",
+                      yaxis=dict(title=spec.get("ylabel", "density"), zeroline=False),
+                      bargap=0, plot_bgcolor="#f8f8f8", shapes=shapes, annotations=annos,
                       legend=dict(orientation="h", y=-0.18, x=0),
                       margin=dict(l=55, r=20, t=42, b=70))
     return fig.to_json().replace("\\u002f", "/")
@@ -172,7 +187,7 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
                       hover_meta: dict[str, dict] | None, *, title: str, intro: str,
                       always_show_thumbs: bool, thumb_scale: float = 1.0,
                       hover_thumbs: list[str] | None = None, extra_html: str = "",
-                      hist: dict[str, dict] | None = None,
+                      hist: dict[str, list[dict]] | None = None,
                       page_title: str = "Embedding Cluster Viewer") -> str:
     """Render the full self-contained explorer HTML.
 
@@ -183,8 +198,9 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
     thumb_scale: multiplier on the always-visible thumbnail image size (card stays fixed).
     extra_html: optional HTML block injected below the metrics table (e.g. a k-selection
     comparison); empty by default.
-    hist: optional {encoder_name: hist_spec} — a pre-binned feature-distance histogram shown
-    below each scatter and switched together with it (see _hist_figure_json for the spec).
+    hist: optional {encoder_name: [hist_spec, ...]} — one or more pre-binned feature-distance
+    histograms shown in a column beside each scatter and switched together with it (see
+    _hist_figure_json for the spec).
     """
     names = list(projections)
     specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs,
@@ -192,14 +208,21 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
              for n in names}
     specs_js = ",\n".join(f"'{n}': {s}" for n, s in specs.items())
     keys_js = ", ".join(f"'{n}'" for n in names)
-    hist_js = ",\n".join(f"'{n}': {_hist_figure_json(hist[n])}" for n in names if hist and n in hist)
+    def _hist_list(specs):
+        return "[" + ",".join(_hist_figure_json(s) for s in specs) + "]"
+    hist_js = ",\n".join(f"'{n}': {_hist_list(hist[n])}" for n in names if hist and hist.get(n))
     btns = "".join(
         f'<button id="b_{n}" onclick="show(\'{n}\')" class="tb{ " act" if i==0 else "" }">{n}</button>'
         for i, n in enumerate(names))
-    divs = "".join(
-        f'<div id="view_{n}" class="view"{"" if i==0 else " style=display:none"}>'
-        f'<div id="v_{n}"></div><div id="h_{n}" style="margin-top:6px"></div></div>'
-        for i, n in enumerate(names))
+
+    def _view_div(i, n):
+        inline = "" if i == 0 else " style=display:none"
+        specs_h = (hist or {}).get(n) or []
+        hcol = "".join(f'<div id="h_{n}_{j}" class="card"></div>' for j in range(len(specs_h)))
+        hcol = f'<div class="hcol">{hcol}</div>' if specs_h else ""
+        return (f'<div id="view_{n}" class="view"{inline}>'
+                f'<div id="v_{n}" class="card"></div>{hcol}</div>')
+    divs = "".join(_view_div(i, n) for i, n in enumerate(names))
     table = _metrics_table(projections)
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <title>{page_title}</title>
@@ -214,7 +237,8 @@ table.m th{{background:#0f3460;color:#fff}} table.m td:first-child,table.m th:fi
 table.m td.win{{background:#cdebcd;font-weight:700}}
 .bar{{margin:10px 0 6px}}
 .view{{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-top:6px}}
-.view>div{{box-shadow:0 1px 4px rgba(0,0,0,.12);border-radius:6px;background:#fff;padding:6px}}</style></head>
+.hcol{{display:flex;flex-direction:column;gap:18px}}
+.card{{box-shadow:0 1px 4px rgba(0,0,0,.12);border-radius:6px;background:#fff;padding:6px}}</style></head>
 <body><h2>{title}</h2><p>{intro}</p>
 <p style="margin-top:0"><b>Clustering quality per encoder</b> (silhouette ↑, Davies–Bouldin ↓,
 Calinski–Harabasz ↑; green = best):</p>{table}
@@ -234,7 +258,7 @@ function tip(el){{var t=document.getElementById('tip');
 function show(n){{K.forEach(function(k){{var d=document.getElementById('view_'+k),b=document.getElementById('b_'+k);
   d.style.display=(k===n?'':'none');b.className='tb'+(k===n?' act':'');}});
   if(!R[n]){{var sv=document.getElementById('v_'+n);Plotly.newPlot(sv,S[n].data,S[n].layout,{{responsive:false,displayModeBar:false}});
-    if(H[n]){{Plotly.newPlot(document.getElementById('h_'+n),H[n].data,H[n].layout,{{responsive:false,displayModeBar:false}});}}
+    if(H[n]){{H[n].forEach(function(hf,i){{Plotly.newPlot(document.getElementById('h_'+n+'_'+i),hf.data,hf.layout,{{responsive:false,displayModeBar:false}});}});}}
     R[n]=1;setTimeout(function(){{tip(sv);}},400);}}}}
 show(K[0]);
 </script></body></html>"""
