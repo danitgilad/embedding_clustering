@@ -23,6 +23,10 @@ This allows code reuse: the downstream is the shared `src/core/` package
 `src/part_b/pipeline.py` are separate thin wrappers that call those same core modules — Part B's
 just additionally does attribute characterization + pseudo-label validation that Part A doesn't need.
 
+> 📖 **Method background** — what each embedding / clustering / metric method *is* and why we use
+> it (DINOv2, CLIP, Point-MAE, ArcFace, KMeans, silhouette, AMI, …) lives in
+> **[`METHODS.md`](METHODS.md)**. This README stays focused on approach, decisions, and findings.
+
 ## Project structure
 
 ```
@@ -222,7 +226,10 @@ identity signal to recover — the only structure to find is **attributes**.
 
 **Pipeline.**
 1. **Generate** 500 faces from [thispersondoesnotexist.com](https://thispersondoesnotexist.com)
-   (plain HTTP GET → JPEG), with polite rate-limiting, content-hash dedup, and retry/backoff.
+   (plain HTTP GET → JPEG, ~1024², one identity per request), with polite rate-limiting,
+   content-hash dedup, and retry/backoff. **Preprocessing** is model-side: ArcFace detects,
+   aligns and crops each face (largest face kept) before embedding; the DINOv2 ablation resizes
+   + centre-crops to 224². No manual cleaning is needed (TPDNE faces are frontal and frame-filling).
 2. **Model — InsightFace `buffalo_l` (ArcFace).** Chosen because it is face-specialized and,
    per face, returns a 512-d ArcFace embedding **plus** predicted age/gender/pose. We cluster
    the embedding and use the attributes as *evidence* to characterize and validate clusters.
