@@ -275,10 +275,12 @@ partition than silhouette's k=6. (This is now the default; silhouette is one fla
 Agglomerative under AMI still climbs to k_max because its finer splits stay gender-coherent —
 the same continuous-manifold signature HDBSCAN showed.
 
-**Figures** (`reports/part_b/`): `arcface_kmeans_umap.png` (clusters), `arcface_metrics.png`,
-`arcface_clusters_montage.png` (sample faces per cluster — the gender/age grouping is visible
-at a glance), plus the agglomerative/hdbscan scatters. Per-cluster profiles are in
-`reports/part_b/arcface_results.json`.
+**Figures** (`reports/part_b/`): the main one is **`part_b_overview.png`** — the ArcFace UMAP
+shown three ways (coloured by **cluster** with sample faces overlaid, by **gender**, by
+**age**) so you can *see* the clusters tracking gender + age. Also: `arcface_clusters_montage.png`
+(sample faces per cluster), `*_umap.png` scatters, `arcface_metrics.png`. Per-cluster profiles
+in `arcface_results.json`. (Unlike Part A, the encoders here embed the **colour** face crop —
+colour *is* used.)
 
 ---
 
