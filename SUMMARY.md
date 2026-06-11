@@ -94,7 +94,9 @@ Attribute-driven selection collapses to **k=3 (women / men / a young cohort)** a
 keeps rising — an honest signature of a continuous manifold, not a degenerate artifact.)
 
 **Caveats:** *Part A (n=14)* "best k" is unstable (silhouette picked 7 for DINOv2, 3 for CLIP) —
-illustrative only. *Part B* structure is continuous (gender × age × pose), so no single k is
+illustrative only. *k is chosen per encoder by the same silhouette rule, so the differing k is itself
+a result, not a confound; at a fixed k=6 the ranking is unchanged (DINOv2 0.471 > Point-MAE 0.404 >
+CLIP 0.302).* *Part B* structure is continuous (gender × age × pose), so no single k is
 "correct"; the attribute-driven k is the most *interpretable* choice for this goal.
 
 ---

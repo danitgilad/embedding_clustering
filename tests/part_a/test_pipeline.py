@@ -15,9 +15,11 @@ def test_run_clustering_stage_writes_outputs(tmp_path):
     results = run_clustering_stage(
         extractor=FakeExtractor(), assets=assets, out_dir=tmp_path,
         algorithms=["kmeans"], k_min=2, k_max=3,
-        preprocess=["standardize"], pca_components=None,
-        umap_cfg={"n_neighbors": 3, "min_dist": 0.1, "metric": "euclidean"}, seed=0,
+        preprocess=["standardize"], pca_components=None, seed=0,
     )
     assert "kmeans" in results
     assert (tmp_path / "fake.npy").exists()
     assert (tmp_path / "figures").exists()
+    # Part A no longer writes per-algorithm UMAP scatters (overview covers that)
+    assert not (tmp_path / "figures" / "fake_kmeans_umap.png").exists()
+    assert (tmp_path / "figures" / "fake_metrics.png").exists()

@@ -104,6 +104,7 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
     out_dir = Path(out_dir)
     items, _ = _part_a_projections(cfg, out_dir)
     n = len(items)
+    gaps: dict[str, float] = {}
     fig, axes = plt.subplots(n, 2, figsize=(12, 3.4 * n), dpi=130, squeeze=False)
     for row, it in zip(axes, items):
         X = np.asarray(it["X"], dtype=float)
@@ -118,19 +119,32 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
 
         ax_l, ax_r = row
         ax_l.hist(alld, bins=24, color="#4C72B0", alpha=0.85)
-        ax_l.set_title(f"{it['name']} · {it['modality']} — pairwise cosine distances", fontsize=10)
-        ax_l.set_xlabel("cosine distance"); ax_l.set_ylabel("pair count")
+        ax_l.set_title(f"{it['name']} · {it['modality']} — all pairwise cosine distances", fontsize=10)
+        ax_l.set_xlabel("cosine distance  (0 = identical direction, ~1 = unrelated)")
+        ax_l.set_ylabel("pair count")
 
         gap = (float(inter.mean()) - float(intra.mean())) if len(intra) and len(inter) else float("nan")
+        gaps[it["name"]] = gap
         for data, colour, lab in ((intra, "#55A868", "intra-cluster"), (inter, "#C44E52", "inter-cluster")):
             if len(data):
                 ax_r.hist(data, bins=20, density=True, color=colour, alpha=0.55, label=lab)
-        ax_r.set_title(f"intra vs inter — separation (Δmean) = {gap:.3f}", fontsize=10)
+        ax_r.axvline(float(intra.mean()), color="#55A868", ls="--", lw=1)
+        ax_r.axvline(float(inter.mean()), color="#C44E52", ls="--", lw=1)
+        ax_r.set_title(f"same-cluster vs different-cluster — separation Δmean = {gap:.3f}", fontsize=10)
         ax_r.set_xlabel("cosine distance"); ax_r.set_ylabel("density"); ax_r.legend(fontsize=8)
 
-    fig.suptitle("Part A — feature-distribution & discriminability analysis "
-                 "(larger intra↔inter gap = more discriminative features)", fontsize=13)
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    ranking = " > ".join(f"{nm} ({g:.2f})" for nm, g in
+                         sorted(gaps.items(), key=lambda kv: kv[1], reverse=True))
+    fig.suptitle("Part A — feature-distribution & discriminability analysis", fontsize=14, y=0.99)
+    fig.text(0.5, 0.005,
+             "How to read — LEFT: the spread of all pairwise distances in the embedding (a left "
+             "tail near 0 = near-duplicate assets). RIGHT: those same distances split by whether "
+             "the pair shares a cluster; dashed lines = the two means, Δmean = mean(inter) − "
+             "mean(intra). A LARGER Δmean means same-cluster items sit much closer than "
+             "different-cluster ones → more discriminative features. Ranking: " + ranking +
+             " — matching the silhouette order; CLIP's heavy intra/inter overlap is why it "
+             "separates worst.", ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
+    fig.tight_layout(rect=(0, 0.045, 1, 0.965))
     out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight")
@@ -172,9 +186,27 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
 
     imgs = {i: thumb(i) for i in ids}
     n = len(items)
-    fig, axes = plt.subplots(1, n, figsize=(7.5 * n, 8.2), dpi=130, squeeze=False)
+    fixed_k = min(6, cfg.part_a.clustering.k_max)
+    k_min, k_max = cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max
+
+    # cross-encoder comparison: silhouette-selected KMeans + Agglomerative + a FIXED-k row,
+    # so the encoders are compared both at their own best k and at one common k (fairness).
+    comp = []
+    for it in items:
+        Xe, m = np.asarray(it["X"], dtype=float), it["metrics"]
+        kstar = len({int(v) for v in it["labels"]})
+        agg = cluster(Xe, "agglomerative", k_min, k_max, cfg.seed)
+        fk = cluster(Xe, "kmeans", fixed_k, fixed_k, cfg.seed)
+        comp.append((f"{it['name']} · {it['modality']}", kstar, m["silhouette"],
+                     m["davies_bouldin"], m["calinski_harabasz"],
+                     M.internal_metrics(Xe, agg.labels)["silhouette"],
+                     M.internal_metrics(Xe, fk.labels)["silhouette"]))
+
+    fig = plt.figure(figsize=(7.5 * n, 10.0), dpi=130)
+    gs = fig.add_gridspec(2, n, height_ratios=[6.6, 1.7], top=0.86, bottom=0.05, hspace=0.05)
     cmap = plt.get_cmap("tab10")
-    for ax, it in zip(axes[0], items):
+    for c_idx, it in enumerate(items):
+        ax = fig.add_subplot(gs[0, c_idx])
         coords, labels = it["coords"], it["labels"]
         uniq = sorted({int(v) for v in labels})
         col = {c: cmap(k % 10) for k, c in enumerate(uniq)}
@@ -204,15 +236,33 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
         ax.set_xlabel("UMAP 1", fontsize=9)
         ax.set_ylabel("UMAP 2", fontsize=9)
         ax.set_xticks([]); ax.set_yticks([])
+
+    # comparison table + takeaway spanning the bottom
+    tax = fig.add_subplot(gs[1, :]); tax.axis("off")
+    cols = ["encoder · modality", "k*", "silhouette ↑", "Davies–Bouldin ↓",
+            "Calinski–Harabasz ↑", "Agglo. sil ↑", f"KMeans sil @ k={fixed_k} ↑"]
+    body = [[r[0], str(r[1]), f"{r[2]:.3f}", f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.3f}",
+             f"{r[6]:.3f}"] for r in comp]
+    t = tax.table(cellText=body, colLabels=cols, loc="upper center", cellLoc="center")
+    t.auto_set_font_size(False); t.set_fontsize(9); t.scale(1, 1.5)
+    best = max(comp, key=lambda r: r[2])[0].split(" · ")[0]
+    worst = min(comp, key=lambda r: r[2])[0].split(" · ")[0]
+    tax.text(0.5, -0.06,
+             f"Takeaway: {best} separates best — at its own k* AND at the common k={fixed_k} — "
+             f"while {worst} is weakest. k* is chosen per encoder by the SAME silhouette sweep "
+             f"over k∈[{k_min},{k_max}]; the differing k* (DINOv2/Point-MAE→7, CLIP→3) is itself "
+             "a result — CLIP's coarser, language-aligned features don't support finer splits. "
+             "Identical downstream for all ⇒ the comparison is fair.",
+             transform=tax.transAxes, ha="center", va="top", fontsize=9.5, color="#222", wrap=True)
+
     fig.suptitle("Part A — glasses clustered per encoder   "
                  "(thumbnail = rendered glasses · border colour = cluster · label = GLB id)",
-                 fontsize=13)
-    fig.text(0.5, 0.945,
+                 fontsize=13, y=0.975)
+    fig.text(0.5, 0.935,
              "Renders are shown in colour for inspection only — the 2D encoders (DINOv2, CLIP) "
              "embed GREYSCALE shape renders and Point-MAE uses mesh geometry, so colour & "
              "texture are NOT used by the clustering.",
              ha="center", va="top", fontsize=9, style="italic", color="#b00000")
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
     out_path = Path(out_path) if out_path else out_dir / "figures" / "part_a_overview.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight")

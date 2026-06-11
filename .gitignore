@@ -31,3 +31,6 @@ env/
 
 # --- Logs ---
 *.log
+
+# local verification download (not part of the project)
+temp_reproduction_test/

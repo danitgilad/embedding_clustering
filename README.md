@@ -187,6 +187,13 @@ feature separates the glasses most cleanly**:
 
 (Agglomerative shows the same DINOv2 > Point-MAE ordering: 0.489 vs 0.407 silhouette.)
 
+**Is the different k fair?** Yes. *k* is chosen **per encoder by the same rule** — the silhouette
+sweep over k∈[2,8]. DINOv2/Point-MAE peak at **k=7**, CLIP at **k=3**; that difference is *itself a
+result*, not a confound — CLIP's coarser, language-aligned embedding can't support finer splits. To
+rule out *k* as the cause, we also compare all three at a **fixed k=6**, and the ranking is
+unchanged: **DINOv2 0.471 > Point-MAE 0.404 > CLIP 0.302**. The cross-encoder comparison table in
+`part_a_overview.png` shows both the per-encoder k\* metrics and this fixed-k column.
+
 Interpretation: the 2D features (DINOv2, CLIP) embed **greyscale** renders, so they capture
 the glasses' **form and silhouette as projected to 2D** (rim shape, lens curvature, frame
 proportions revealed by shading) — *not* colour or material. Point-MAE captures the **raw 3D
@@ -219,13 +226,17 @@ small near-zero tail = the near-duplicate left/right frame variants.)
 
 **Figures** (`reports/part_a/`): the main one is **[`part_a_overview.png`](reports/part_a/part_a_overview.png)** — a single panel
 per encoder where each glasses **render is placed at its UMAP point**, framed in its
-**cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics. It
-makes "which glasses landed in which cluster, for each feature" inspectable at a glance (and
-shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
+**cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics — plus a
+**cross-encoder comparison table** (k\*, silhouette, Davies–Bouldin, Calinski–Harabasz, agglomerative,
+and the fixed-k=6 column) and a one-line takeaway. It makes "which glasses landed in which cluster,
+for each feature" inspectable at a glance (CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
 **[`feature_distributions.png`](reports/part_a/feature_distributions.png)** is the figure behind
 the *Feature-distribution cross-check* above (pairwise-distance spread + the intra/inter Δmean per
-encoder). Also written: `*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables),
-`*_clusters_montage.png` (per-cluster thumbnail grids). The interactive
+encoder, with a "how to read" caption). Also written:
+**[`dinov2_clusters_montage.png`](reports/part_a/dinov2_clusters_montage.png)** &c — glasses grouped
+by cluster with coloured cluster headers, GLB ids, and a member table — and `*_metrics.png` (metric
+tables annotated with ↑/↓ and the best value per column). The per-algorithm UMAP scatters are
+intentionally *not* emitted for Part A (the overview covers them, far richer). The interactive
 **[`viewer.html`](reports/part_a/viewer.html)** is the richest view (hover for a large colour render + id).
 
 ---

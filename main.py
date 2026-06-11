@@ -79,17 +79,14 @@ def _run_part_a(cfg, stage: str) -> None:
             except Exception:  # noqa: BLE001 - colour bake is non-essential decoration
                 log.warning("colour render failed for %s; hover will use the grey render", a.id)
     if stage in ("extract", "cluster", "all"):
-        import dataclasses
-
         from src.utils.io import sanitize_id
-        umap_cfg = dataclasses.asdict(cfg.reduce.umap)
         # front-view render per asset, for the per-cluster montage
         montage = {a.id: render_dir / f"{sanitize_id(a.id)}_v0.png" for a in assets}
         for ext in A.build_extractors(cfg, render_dir):
             res = A.run_clustering_stage(
                 ext, assets, out, cfg.part_a.clustering.algorithms,
                 cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max,
-                cfg.reduce.preprocess, cfg.reduce.pca_components, umap_cfg, cfg.seed,
+                cfg.reduce.preprocess, cfg.reduce.pca_components, cfg.seed,
                 montage_images=montage)
             log.info("Part A %s: %s", ext.name, res)
     if stage in ("viewer", "all"):

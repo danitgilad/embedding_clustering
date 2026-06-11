@@ -7,7 +7,6 @@ disk; cluster/viz run on the cached .npy anywhere.
 from __future__ import annotations
 
 import logging
-from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
@@ -15,9 +14,9 @@ from src.config import Config
 from src.core import metrics as M
 from src.core.cluster import cluster
 from src.core.embedding_store import save_embeddings
-from src.core.reduce import preprocess as _pre, umap_2d
+from src.core.reduce import preprocess as _pre
 from src.core.types import Asset, FeatureExtractor
-from src.core.visualize import cluster_montage, metric_table_png, scatter_2d
+from src.core.visualize import cluster_montage, metric_table_png
 from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
@@ -54,42 +53,40 @@ def build_extractors(cfg: Config, render_dir: Path) -> list[FeatureExtractor]:
 def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
                          out_dir: str | Path, algorithms: Sequence[str], k_min: int,
                          k_max: int, preprocess: Sequence[str], pca_components: int | None,
-                         umap_cfg: dict, seed: int,
+                         seed: int,
                          montage_images: dict[str, Path] | None = None) -> dict:
-    """Extract (or reuse) embeddings, cluster with each algorithm, write figures + metrics.
+    """Extract embeddings, cluster with each algorithm, write the metrics table + montage.
 
-    If `montage_images` maps asset id -> a representative image path, also writes a
-    per-cluster thumbnail montage for the first (primary) algorithm.
+    If `montage_images` maps asset id -> a representative image path, also writes a per-cluster
+    thumbnail montage for the first (primary) algorithm. (UMAP for the report comes from the
+    viewer stage / part_a_overview.png, so no per-algorithm scatter is written here.)
     """
     out = ensure_dir(out_dir)
     fig_dir = ensure_dir(out / "figures")
     emb = extractor.extract(assets)
     save_embeddings(emb, out)
     X = _pre(emb.vectors, list(preprocess), pca_components=pca_components)
-    coords = umap_2d(X, umap_cfg["n_neighbors"], umap_cfg["min_dist"], umap_cfg["metric"], seed)
     results: dict[str, dict] = {}
     primary_labels = None
     for algo in algorithms:
         res = cluster(X, algo, k_min, k_max, seed)
         if primary_labels is None:
             primary_labels = res.labels
-        m = M.internal_metrics(X, res.labels)
-        results[algo] = {"n_clusters": res.n_clusters, **m}
-        scatter_2d(coords, res.labels, fig_dir / f"{extractor.name}_{algo}_umap.png",
-                   title=f"{extractor.name} · {algo} (k={res.n_clusters})")
+        results[algo] = {"n_clusters": res.n_clusters, **M.internal_metrics(X, res.labels)}
     metric_table_png({a: {k: v for k, v in r.items() if k != "n_clusters"}
                       for a, r in results.items()},
                      fig_dir / f"{extractor.name}_metrics.png",
-                     title=f"{extractor.name} clustering metrics")
+                     title=f"{extractor.name} clustering metrics (KMeans vs Agglomerative)")
+    # Per-cluster montage (primary algorithm = KMeans). The plain per-algorithm UMAP scatters
+    # are intentionally NOT written for Part A — part_a_overview.png + the interactive viewer
+    # cover the same ground far more richly (renders, GLB ids, cluster colours, metrics table).
     if montage_images and primary_labels is not None:
-        sel = [(montage_images[i], int(primary_labels[j]))
+        sel = [(montage_images[i], int(primary_labels[j]), i)
                for j, i in enumerate(emb.ids) if i in montage_images]
         if sel:
-            sizes = Counter(int(l) for l in primary_labels)
-            titles = {c: f"cluster {c} (n={n})" for c, n in sizes.items()}
-            cluster_montage([p for p, _ in sel], [lab for _, lab in sel],
+            cluster_montage([p for p, _, _ in sel], [lab for _, lab, _ in sel],
                             fig_dir / f"{extractor.name}_clusters_montage.png",
-                            row_titles=titles,
-                            caption=f"{extractor.name}: glasses grouped by primary-algorithm cluster")
+                            ids=[i for _, _, i in sel], crop=True, summary=True,
+                            caption=f"{extractor.name}: glasses grouped by KMeans cluster")
     write_json(results, out / f"{extractor.name}_results.json")
     return results
