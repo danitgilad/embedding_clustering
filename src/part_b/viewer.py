@@ -113,6 +113,68 @@ def _k_selection_table(X: np.ndarray, gender: np.ndarray, age: np.ndarray, algo:
             f'<table class="m">{head}{body}</table>')
 
 
+def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
+                                      out_path: str | Path | None = None) -> Path:
+    """Per encoder: pairwise cosine-distance distribution split by ATTRIBUTE (same vs different
+    gender, and same vs different age bucket). Δmean = mean(different) − mean(same) is a
+    label-free read on whether the embedding encodes that attribute — positive ⇒ same-attribute
+    faces sit closer. The Part B analogue of Part A's feature_distributions, but split by the
+    attributes we care about (the manifold is continuous, so a cluster split would just restate
+    the low silhouette)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    out_dir = Path(out_dir)
+    raw = json.loads((out_dir / "arcface_attributes.json").read_text())
+    encoders = [e for e in cfg.part_b.encoders if (out_dir / f"{e}.npy").exists()]
+    summary: dict[str, tuple[float, float]] = {}
+    fig, axes = plt.subplots(len(encoders), 3, figsize=(15, 3.7 * len(encoders)),
+                             dpi=130, squeeze=False)
+
+    def _split(ax, dists, same, attr) -> float:
+        mean_same, mean_diff = float(dists[same].mean()), float(dists[~same].mean())
+        for data, colour, lab in ((dists[same], "#55A868", f"same {attr}"),
+                                  (dists[~same], "#C44E52", f"different {attr}")):
+            ax.hist(data, bins=40, density=True, color=colour, alpha=0.55, label=lab)
+        ax.axvline(mean_same, color="#55A868", ls="--", lw=1)
+        ax.axvline(mean_diff, color="#C44E52", ls="--", lw=1)
+        ax.set_title(f"by {attr} — Δmean = {mean_diff - mean_same:.3f}", fontsize=10)
+        ax.set_xlabel("cosine distance"); ax.set_ylabel("density"); ax.legend(fontsize=8)
+        return mean_diff - mean_same
+
+    for row, enc in zip(axes, encoders):
+        emb = load_embeddings(enc, out_dir)
+        X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
+        Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12)
+        iu = np.triu_indices(len(X), k=1)
+        d = (1.0 - Xn @ Xn.T)[iu]
+        gender = np.array([raw.get(i, {}).get("gender", "?") for i in emb.ids])
+        age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in emb.ids])
+        row[0].hist(d, bins=40, color="#4C72B0", alpha=0.85)
+        row[0].set_title(f"{enc} — all {len(d):,} pairwise cosine distances", fontsize=10)
+        row[0].set_xlabel("cosine distance"); row[0].set_ylabel("pair count")
+        summary[enc] = (_split(row[1], d, gender[iu[0]] == gender[iu[1]], "gender"),
+                        _split(row[2], d, age[iu[0]] == age[iu[1]], "age bucket"))
+
+    rank = " · ".join(f"{e}: gender Δ={g:.2f}, age Δ={a:.2f}" for e, (g, a) in summary.items())
+    fig.suptitle("Part B — feature-distribution by attribute (does the embedding encode gender / age?)",
+                 fontsize=14, y=0.99)
+    fig.text(0.5, 0.005,
+             "All pairwise cosine distances per encoder, split by whether the two faces share a "
+             "GENDER (middle) or AGE bucket (right); dashed = means, Δmean = mean(different) − "
+             "mean(same). Positive Δmean ⇒ same-attribute faces sit closer ⇒ the embedding encodes "
+             "that attribute. " + rank + ". Both separate gender more than age — matching the "
+             "cluster-purity results; a cluster split would be near-flat (the manifold is continuous).",
+             ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
+    fig.tight_layout(rect=(0, 0.05, 1, 0.96))
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
+    ensure_dir(out_path.parent)
+    fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
+    log.info("Wrote %s", out_path)
+    return out_path
+
+
 def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Path,
                           encoder: str = "arcface", out_path: str | Path | None = None,
                           n_faces: int = 110, k_selection: str | None = None) -> Path:
@@ -149,12 +211,14 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
                   cfg.seed, score_fn=score_fn)
     labels = np.asarray(res.labels)
     met = M.internal_metrics(X, labels)
-    gp = M.external_metrics(labels, gender)["purity"]
-    ksel = "attribute-k" if score_fn is not None else "silhouette-k"
+    eg, ea = M.external_metrics(labels, gender), M.external_metrics(labels, age)
+    k_found = len(set(labels.tolist()))
+    sel_used = "attribute" if score_fn is not None else "silhouette"
+    ksel = f"{sel_used}-k"
 
     series = [
-        (f"clusters ({algo}, {ksel}={len(set(labels.tolist()))}) · "
-         f"sil={met['silhouette']:.3f} · gender purity={gp:.3f}", "clusters", labels),
+        (f"clusters ({algo}, {ksel}={k_found}) · "
+         f"sil={met['silhouette']:.3f} · gender purity={eg['purity']:.3f}", "clusters", labels),
         ("predicted gender", "predicted gender", gender),
         ("predicted age", "predicted age", age),
     ]
@@ -162,11 +226,12 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
     face_idx = list(range(0, len(ids), stride))
 
     cmap = plt.get_cmap("tab10")
-    fig, axes = plt.subplots(2, 3, figsize=(21, 13), dpi=130)
+    fig = plt.figure(figsize=(21, 14.5), dpi=130)
+    gs = fig.add_gridspec(3, 3, height_ratios=[6, 6, 1.0], top=0.92, bottom=0.04, hspace=0.12)
     for c_i, (title, short, values) in enumerate(series):
         cats = sorted(set(values.tolist()))
         col = {c: cmap(i % 10) for i, c in enumerate(cats)}
-        ax_top, ax_bot = axes[0][c_i], axes[1][c_i]
+        ax_top, ax_bot = fig.add_subplot(gs[0, c_i]), fig.add_subplot(gs[1, c_i])
         for c in cats:
             mm = values == c
             ax_top.scatter(coords[mm, 0], coords[mm, 1], s=14, color=col[c],
@@ -187,18 +252,34 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
             ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2")
             ax.set_xticks([]); ax.set_yticks([])
 
-    fig.suptitle(f"Part B — {encoder} face embedding (UMAP): clusters vs gender vs age", fontsize=14)
-    fig.text(0.5, 0.955,
+    # metrics summary table spanning the bottom row
+    tax = fig.add_subplot(gs[2, :]); tax.axis("off")
+    cols = ["k", "silhouette ↑", "Davies–Bouldin ↓", "Calinski–Harabasz ↑",
+            "gender purity ↑", "gender NMI ↑", "age purity ↑", "age NMI ↑"]
+    body = [[str(k_found), f"{met['silhouette']:.3f}", f"{met['davies_bouldin']:.2f}",
+             f"{met['calinski_harabasz']:.1f}", f"{eg['purity']:.3f}", f"{eg['nmi']:.3f}",
+             f"{ea['purity']:.3f}", f"{ea['nmi']:.3f}"]]
+    t = tax.table(cellText=body, colLabels=cols, loc="center", cellLoc="center",
+                  rowLabels=[f"{encoder} · {ksel}"])
+    t.auto_set_font_size(False); t.set_fontsize(10); t.scale(1, 1.6)
+    tax.text(0.5, -0.35, "↑ higher better · ↓ lower better.  gender/age purity & NMI score the "
+             "clustering against InsightFace's predicted labels; low silhouette is expected on a "
+             "continuous manifold.", transform=tax.transAxes, ha="center", va="top",
+             fontsize=8.5, color="#555")
+
+    sel_label = ("attribute-driven k-selection (maximise gender+age AMI)" if score_fn is not None
+                 else "silhouette k-selection (geometric separation)")
+    fig.suptitle(f"Part B — {encoder} · {sel_label} → k={k_found}   "
+                 "(same UMAP recoloured by cluster / gender / age)", fontsize=14, y=0.975)
+    fig.text(0.5, 0.945,
              "Same UMAP layout recoloured three ways. Predicted gender/age are InsightFace model "
              "outputs (not axes) — colouring the fixed layout by them shows the embedding separates "
              "by gender (and age). Top = points only; bottom = a dense face sample.",
              ha="center", va="top", fontsize=9, style="italic", color="#333")
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
-    base = "part_b_overview" if encoder == "arcface" else f"part_b_overview_{encoder}"
-    # suffix only when an explicit k_selection differs from the configured default, so the
-    # primary figure keeps its stable name and the extra partition lands in its own file.
-    suffix = f"_{sel}" if (k_selection and k_selection != cfg.part_b.clustering.k_selection) else ""
-    out_path = Path(out_path) if out_path else out_dir / "figures" / f"{base}{suffix}.png"
+    # Filename encodes BOTH k and the k-selection so the variants are unmistakable, e.g.
+    # part_b_overview_arcface_k_3_attribute.png vs part_b_overview_arcface_k_6_silhouette.png.
+    name = f"part_b_overview_{encoder}_k_{k_found}_{sel_used}.png"
+    out_path = Path(out_path) if out_path else out_dir / "figures" / name
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)

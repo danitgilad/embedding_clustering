@@ -120,8 +120,15 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
                         M.external_metrics(res.labels, age_truth).items()})
             results[f"{algo}__profile"] = characterize_clusters(res.labels, emb.ids, attrs)
         results[algo] = row
+        note = ""
+        if algo == "hdbscan" and res.n_clusters == 0:
+            mcs = max(5, X.shape[0] // 20)
+            note = ("HDBSCAN is density-based (no preset k): it forms a cluster only where a region "
+                    f"of ≥{mcs} points is denser than its surroundings, separated by lower-density "
+                    "gaps. It found none → every point is noise (k=0) — the honest signature of "
+                    "a continuous embedding manifold, not a failure.")
         scatter_2d(coords, res.labels, fig_dir / f"{emb.name}_{algo}_umap.png",
-                   title=f"{emb.name} · {algo} (k={res.n_clusters})")
+                   title=f"{emb.name} · {algo} (k={res.n_clusters})", note=note)
     metric_table_png({a: {k: v for k, v in r.items() if isinstance(v, float)}
                       for a, r in results.items() if not a.endswith("__profile")},
                      fig_dir / f"{emb.name}_metrics.png",

@@ -124,17 +124,21 @@ def _run_part_b(cfg, stage: str) -> None:
             log.info("Part B %s: %s", ext.name,
                      {k: v for k, v in res.items() if not k.endswith("__profile")})
     if stage in ("viewer", "all"):
-        from src.part_b.viewer import build_part_b_overview, build_part_b_viewer
+        from src.part_b.viewer import (build_part_b_feature_distribution,
+                                       build_part_b_overview, build_part_b_viewer)
         build_part_b_viewer(cfg, out, data_dir)
+        if (out / "arcface_attributes.json").exists():
+            build_part_b_feature_distribution(cfg, out)
         for enc in cfg.part_b.encoders:
-            if (out / f"{enc}.npy").exists():
+            if not (out / f"{enc}.npy").exists():
+                continue
+            if (out / f"{enc}_attributes.json").exists():
+                # encoder with attributes (ArcFace): emit BOTH k-selections, each named
+                # explicitly (..._attribute / ..._silhouette) so the difference is obvious.
+                for sel in ("attribute", "silhouette"):
+                    build_part_b_overview(cfg, out, data_dir, encoder=enc, k_selection=sel)
+            else:
                 build_part_b_overview(cfg, out, data_dir, encoder=enc)
-        # ArcFace's OTHER k-selection alongside the default, so both partitions
-        # (attribute-k=3 and silhouette-k=6) have a static overview to compare.
-        if (out / "arcface.npy").exists():
-            other = "silhouette" if cfg.part_b.clustering.k_selection == "attribute" else "attribute"
-            build_part_b_overview(cfg, out, data_dir, encoder="arcface", k_selection=other,
-                                  out_path=out / "figures" / f"part_b_overview_arcface_{other}.png")
 
 
 def main(argv: list[str] | None = None) -> None:

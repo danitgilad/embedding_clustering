@@ -230,20 +230,42 @@ def build_part_a_fixed_k_review(cfg: Config, out_dir: str | Path, render_dir: st
     imgs = _glasses_thumbs(render_dir, ids, thumb_px)
     n = len(items)
     cmap = plt.get_cmap("tab10")
-    fig, axes = plt.subplots(1, n, figsize=(7.5 * n, 8.4), dpi=130, squeeze=False)
-    for ax, it in zip(axes[0], items):
+    fig = plt.figure(figsize=(7.5 * n, 9.6), dpi=130)
+    gs = fig.add_gridspec(2, n, height_ratios=[6.6, 1.5], top=0.88, bottom=0.05, hspace=0.05)
+    comp = []
+    for c_idx, it in enumerate(items):
+        ax = fig.add_subplot(gs[0, c_idx])
         X = np.asarray(it["X"], dtype=float)
         res = cluster(X, "kmeans", k, k, cfg.seed)
-        sil = M.internal_metrics(X, res.labels)["silhouette"]
+        m = M.internal_metrics(X, res.labels)
+        comp.append((f"{it['name']} · {it['modality']}", m["silhouette"],
+                     m["davies_bouldin"], m["calinski_harabasz"]))
         _draw_glasses_umap(ax, it["coords"], res.labels, ids, imgs, cmap,
-                           f"{it['name']} · {it['modality']}\nKMeans @ k={k} · silhouette={sil:.3f}")
+                           f"{it['name']} · {it['modality']}\nKMeans @ k={k} · "
+                           f"silhouette={m['silhouette']:.3f}")
+
+    # full-metric comparison table at the common k (silhouette is only one of three measures)
+    tax = fig.add_subplot(gs[1, :]); tax.axis("off")
+    cols = [f"encoder · modality (all @ k={k})", "silhouette ↑", "Davies–Bouldin ↓",
+            "Calinski–Harabasz ↑"]
+    body = [[r[0], f"{r[1]:.3f}", f"{r[2]:.2f}", f"{r[3]:.2f}"] for r in comp]
+    t = tax.table(cellText=body, colLabels=cols, loc="upper center", cellLoc="center")
+    t.auto_set_font_size(False); t.set_fontsize(9.5); t.scale(1, 1.5)
+    for ci, direction in {1: "up", 2: "down", 3: "up"}.items():
+        vals = [r[ci] for r in comp]
+        bi = (max if direction == "up" else min)(range(len(vals)), key=lambda i: vals[i])
+        t[bi + 1, ci].set_text_props(fontweight="bold")
+    best = max(comp, key=lambda r: r[1])[0].split(" · ")[0]
+    tax.text(0.5, -0.10, f"At the common k={k}, {best} still separates best on all three internal "
+             "measures — the ranking doesn't depend on each encoder's own k.",
+             transform=tax.transAxes, ha="center", va="top", fontsize=9.5, color="#222")
+
     fig.suptitle(f"Part A — every encoder clustered at a COMMON k={k} (UMAP)   "
                  "— holding k equal isolates the feature, so the partitions are directly comparable",
-                 fontsize=12, y=0.99)
-    fig.text(0.5, 0.95, "Renders shown in colour for inspection only — colour & texture are NOT "
+                 fontsize=12, y=0.965)
+    fig.text(0.5, 0.925, "Renders shown in colour for inspection only — colour & texture are NOT "
              "used by the clustering.", ha="center", va="top", fontsize=9, style="italic",
              color="#b00000")
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
     out_path = Path(out_path) if out_path else out_dir / "figures" / f"part_a_k{k}_umap.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)

@@ -1,3 +1,9 @@
+This is a senior task
+submitted by Danit Gilad
+June 2026
+https://github.com/danitgilad/embedding_clustering
+
+
 # Embedding Clustering
 
 Two independent unsupervised-learning pipelines over different data modalities:
@@ -299,8 +305,13 @@ Observations:
   only measure the *labelled* axes, not everything the embedding actually represents.
 - **Low silhouette is expected and informative**: face embeddings lie on a *continuous*
   manifold (identity/attribute space), not in well-separated blobs — so partitional methods
-  impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** (everything
-  labelled noise), which is the honest signature of a continuous space rather than a bug.
+  impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** — k=0, every
+  point labelled noise (`arcface_hdbscan_umap.png`). HDBSCAN is *density-based* (no preset k): it
+  forms a cluster only where a region of ≥`min_cluster_size` points (we use `max(5, N/20)` = **25**
+  for 500 faces) is denser than its surroundings, separated by lower-density gaps. On a continuous
+  manifold no such density-separated island exists, so it returns **k=0 — meaning "no
+  density-separated groups exist,"** a legitimate answer (KMeans/Agglomerative can't give it; they
+  always return the *k* you ask for) and the honest signature of a continuous space, not a bug.
 - **Face-specialized vs generic backbone** (ablation): embedding the same 500 faces with a
   *generic* DINOv2 gives clusters that are **more separated *and* more gender-aligned** than
   ArcFace (KMeans silhouette **0.195** vs 0.045; gender purity **0.896** vs 0.808, NMI 0.488 vs
@@ -309,8 +320,8 @@ Observations:
   (purity 0.602 vs 0.546) and, crucially, *returns* the per-face predicted age/gender/pose —
   the pseudo-labels we use to interpret and validate every clustering (DINOv2 gives none). So
   the specialization buys the attribute **read-outs**, not better gender grouping. See
-  [`part_b_overview_dinov2_generic.png`](reports/part_b/part_b_overview_dinov2_generic.png); both
-  encoders are toggles in the Part B viewer.
+  [`part_b_overview_dinov2_generic_k_3_silhouette.png`](reports/part_b/part_b_overview_dinov2_generic_k_3_silhouette.png);
+  both encoders are toggles in the Part B viewer.
 
 **Choosing k — silhouette vs attribute-driven.** The detailed k=6 result above is the
 *silhouette* selection. Because the structure is continuous and what we care about is
@@ -322,15 +333,23 @@ partition than silhouette's k=6. (This is now the default; silhouette is one fla
 Agglomerative under AMI still climbs to k_max because its finer splits stay gender-coherent —
 the same continuous-manifold signature HDBSCAN showed.
 
-**Figures** (`reports/part_b/`): the main one is **[`part_b_overview.png`](reports/part_b/part_b_overview.png)** — the ArcFace UMAP
-shown three ways (by **cluster**, **gender**, **age**) in two rows: top = coloured points only
-(unoccluded), bottom = the same layout with a dense face sample overlaid, so you can *see* the
-clusters tracking gender + age. The same figure is generated per encoder and per k-selection:
-**[`part_b_overview_arcface_silhouette.png`](reports/part_b/part_b_overview_arcface_silhouette.png)**
-is the silhouette **k=6** partition (vs the default attribute **k=3**), and
-**[`part_b_overview_dinov2_generic.png`](reports/part_b/part_b_overview_dinov2_generic.png)** is the
-generic-backbone ablation. Also: [`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)
-(sample faces per cluster), `*_umap.png` scatters, [`arcface_metrics.png`](reports/part_b/arcface_metrics.png).
+**Figures** (`reports/part_b/`): the main one is
+**[`part_b_overview_arcface_k_3_attribute.png`](reports/part_b/part_b_overview_arcface_k_3_attribute.png)**
+— the ArcFace UMAP under the default **attribute-driven k-selection (k=3)**, shown three ways (by
+**cluster**, **gender**, **age**) in two rows (top = coloured points only; bottom = a dense face
+sample) with a **metrics summary table** beneath (silhouette / Davies–Bouldin / Calinski–Harabasz /
+gender & age purity + NMI). The filename and headline both state the k and selection, so the
+variants are unmistakable:
+**[`part_b_overview_arcface_k_6_silhouette.png`](reports/part_b/part_b_overview_arcface_k_6_silhouette.png)**
+is the **silhouette k-selection (k=6)** partition of the *same* ArcFace embedding, and
+**[`part_b_overview_dinov2_generic_k_3_silhouette.png`](reports/part_b/part_b_overview_dinov2_generic_k_3_silhouette.png)**
+is the generic-backbone ablation.
+**[`feature_distributions.png`](reports/part_b/feature_distributions.png)** analyses each encoder's
+embedding directly — pairwise cosine distances split by **same vs different gender / age** (Δmean =
+how much the embedding separates that attribute; generic-DINOv2 separates gender *more* in raw
+distance, Δ0.15, than ArcFace, Δ0.03). Also: [`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)
+(sample faces per cluster), `*_umap.png` scatters (incl. `arcface_hdbscan_umap.png` — k=0, all noise),
+[`arcface_metrics.png`](reports/part_b/arcface_metrics.png).
 Per-cluster profiles in [`arcface_results.json`](reports/part_b/arcface_results.json). (Unlike Part A, the encoders here embed the **colour** face crop —
 colour *is* used.)
 

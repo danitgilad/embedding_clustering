@@ -84,10 +84,14 @@ cross-check. *Why:* makes no centroid/sphericity assumption, so agreement with K
 the structure is real, not an artifact of one algorithm.
 
 ### HDBSCAN
-Density-based clustering that finds variable-density clusters and labels low-density points as
-**noise** (no *k* needed). *Used:* Part B diagnostic. *Why:* it can answer "are there genuinely
-dense, separable clusters?" — here it labels **everything noise**, the honest signature of a
-**continuous** embedding manifold rather than discrete blobs.
+Density-based clustering (no preset *k*). It declares a cluster only where a region of at least
+`min_cluster_size` points is **denser than its surroundings** and separated by lower-density gaps;
+anything else is **noise** (label −1). We use `min_cluster_size = max(5, N/20)` (= 25 for 500 faces).
+*Used:* Part B diagnostic. *Why:* it can answer "are there genuinely dense, separable clusters?" —
+on the continuous ArcFace manifold it finds none and labels **everything noise → k=0**. That is a
+*legitimate result* meaning **"no density-separated groups exist"** (KMeans/Agglomerative can't say
+this — they always return the *k* you ask for), and the honest signature of a continuous embedding
+space rather than discrete blobs.
 
 ---
 

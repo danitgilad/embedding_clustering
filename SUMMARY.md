@@ -53,7 +53,7 @@ recover — what *attribute* structure do the embeddings hold?
   predicted age/gender/pose. The embedding is clustered; the attributes become *evidence* to
   interpret and validate clusters.
 - Added a **generic DINOv2** on the same faces as an ablation (face-specialized vs general).
-- **Colour *is* used here** — both encoders embed the colour face crop (the contrast with Part A's greyscale renders). Visual check: `part_b_overview.png` shows the UMAP three ways (cluster / gender / age) in two rows — points-only on top, a dense face sample below; generated per encoder (`..._dinov2_generic.png` is the ablation).
+- **Colour *is* used here** — both encoders embed the colour face crop (the contrast with Part A's greyscale renders). Visual check: `part_b_overview_arcface_k_3_attribute.png` shows the UMAP three ways (cluster / gender / age) in two rows — points-only on top, a dense face sample below — with a metrics summary table. Filename + headline both name k and the selection, so `..._arcface_k_6_silhouette.png` and `..._dinov2_generic_k_3_silhouette.png` are unambiguous; `feature_distributions.png` splits pairwise distances by same/different gender/age.
 
 **Results**
 - KMeans k=6 splits cleanly by **gender + age** (two clusters 100% gender-pure; others stratify by age). Validated against the model's own gender labels: **purity 0.81**.

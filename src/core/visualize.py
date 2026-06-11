@@ -30,15 +30,17 @@ def _metric_direction(metric: str) -> str | None:
 
 
 def scatter_2d(points: np.ndarray, labels: np.ndarray, out_path: str | Path,
-               title: str = "", point_ids: Sequence[str] | None = None) -> Path:
+               title: str = "", point_ids: Sequence[str] | None = None,
+               note: str = "") -> Path:
     """Scatter 2D UMAP points coloured by cluster, with a DISCRETE legend (not a colorbar).
 
     HDBSCAN noise (label -1) is drawn grey and labelled "noise". If `point_ids` is given and
-    the set is small (<=30, i.e. Part A), each point is annotated with its id.
+    the set is small (<=30, i.e. Part A), each point is annotated with its id. `note` adds a
+    wrapped explanatory caption beneath the plot (e.g. why HDBSCAN returned k=0).
     """
     out_path = Path(out_path)
     labels = np.asarray(labels)
-    fig, ax = plt.subplots(figsize=(6.8, 5.6), dpi=120)
+    fig, ax = plt.subplots(figsize=(6.8, 5.8), dpi=120)
     cmap = plt.get_cmap("tab10")
     for k, c in enumerate(sorted({int(v) for v in labels})):
         m = labels == c
@@ -56,6 +58,9 @@ def scatter_2d(points: np.ndarray, labels: np.ndarray, out_path: str | Path,
     ax.text(0.5, -0.08, "UMAP projection — for display only; clustering runs on the "
             "full-dimensional embeddings", transform=ax.transAxes, ha="center",
             fontsize=7, color="#777")
+    if note:
+        ax.text(0.5, -0.15, note, transform=ax.transAxes, ha="center", va="top",
+                fontsize=7.5, color="#444", wrap=True)
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
     return out_path
 

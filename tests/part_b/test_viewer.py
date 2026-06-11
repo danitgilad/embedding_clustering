@@ -2,7 +2,8 @@ import json
 import numpy as np
 from PIL import Image
 from src.config import load_config
-from src.part_b.viewer import build_part_b_overview, build_part_b_viewer
+from src.part_b.viewer import (build_part_b_feature_distribution, build_part_b_overview,
+                               build_part_b_viewer)
 
 
 def _fixture(tmp_path, n=12):
@@ -32,6 +33,13 @@ def test_build_part_b_overview_writes_png(tmp_path):
     out, faces, _ = _fixture(tmp_path)
     cfg = load_config("config/default.yaml")
     png = build_part_b_overview(cfg, out_dir=out, faces_dir=faces)
+    assert png.exists() and png.stat().st_size > 0
+
+
+def test_build_part_b_feature_distribution_writes_png(tmp_path):
+    out, _, _ = _fixture(tmp_path)
+    cfg = load_config("config/default.yaml")
+    png = build_part_b_feature_distribution(cfg, out_dir=out)
     assert png.exists() and png.stat().st_size > 0
 
 
