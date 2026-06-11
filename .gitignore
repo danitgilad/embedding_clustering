@@ -34,3 +34,6 @@ env/
 
 # local verification download (not part of the project)
 temp_reproduction_test/
+
+# Superpowers build-phase planning/spec notes (not a deliverable)
+docs/superpowers/
