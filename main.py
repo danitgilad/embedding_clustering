@@ -2,6 +2,7 @@
 
 Examples:
   python main.py part-a all
+  python main.py part-a explore        # inspect GLB structure/materials -> dataset_exploration.md
   python main.py part-a render
   python main.py part-a cluster
   python main.py part-b generate --n 500
@@ -44,7 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--set", dest="overrides", action="append", default=[],
                    help="dotted config override, e.g. --set part_b.n_images=200")
     p.add_argument("part", choices=["part-a", "part-b"])
-    p.add_argument("stage", choices=["render", "generate", "extract", "cluster", "viewer", "all"])
+    p.add_argument("stage", choices=["explore", "render", "generate", "extract", "cluster",
+                                     "viewer", "all"])
     p.add_argument("--n", type=int, default=None, help="Part B: number of faces")
     return p
 
@@ -56,6 +58,9 @@ def _run_part_a(cfg, stage: str) -> None:
     out = ensure_dir(Path(cfg.paths.outputs_dir) / "part_a")
     render_dir = ensure_dir(Path(cfg.paths.data_dir) / "part_a_renders")
     assets = A.discover_assets(cfg.paths.assets_dir)
+    if stage in ("explore", "all"):
+        from src.part_a.explore import write_exploration_report
+        write_exploration_report(assets, out / "dataset_exploration.md")
     if stage in ("render", "all"):
         from src.part_a.mesh_io import load_glb, to_single_mesh
         from src.part_a.render import render_views
@@ -88,9 +93,11 @@ def _run_part_a(cfg, stage: str) -> None:
                 montage_images=montage)
             log.info("Part A %s: %s", ext.name, res)
     if stage in ("viewer", "all"):
-        from src.part_a.viewer import build_part_a_overview, build_part_a_viewer
+        from src.part_a.viewer import (build_feature_distribution_figure,
+                                       build_part_a_overview, build_part_a_viewer)
         build_part_a_viewer(cfg, out, render_dir)
         build_part_a_overview(cfg, out, render_dir)
+        build_feature_distribution_figure(cfg, out)
 
 
 def _run_part_b(cfg, stage: str) -> None:

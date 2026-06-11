@@ -12,6 +12,7 @@ extractor changes between tasks; everything downstream is held identical so comp
 better capture "similar-looking glasses"?
 
 **Flow & choices**
+- **Explore** each `.glb` first (`dataset_exploration.md`): they're **multi-component Scenes** (→ apply node transforms when flattening) with textured materials the encoders deliberately ignore.
 - Render each `.glb` from 4 views off the **triangulated mesh**, **greyscale** (form + shading, no colour).
 - **2D feature:** frozen **DINOv2** on the grey renders, views mean-pooled (+ **CLIP** as a 2nd 2D encoder, to test whether *any* 2D encoder wins or DINOv2 specifically).
 - **3D feature:** **Point-MAE** on *xyz* points sampled from the mesh surface (self-supervised, pure geometry — the 3D analogue of DINOv2).
@@ -29,7 +30,8 @@ better capture "similar-looking glasses"?
 **Conclusion:** this is really **shape-from-2D-render vs shape-from-3D-points** (colour is not a
 factor). DINOv2 separates best, but **CLIP — also 2D — does worst**, so it isn't "2D beats 3D";
 it's that **DINOv2's fine-grained features** beat both pure geometry and CLIP's coarser,
-language-aligned semantics. (n=14 → relative, not absolute.)
+language-aligned semantics. (n=14 → relative, not absolute.) `feature_distributions.png` shows
+the *same* ordering label-free, as the intra- vs inter-cluster distance gap: **0.69 / 0.53 / 0.38**.
 
 ---
 

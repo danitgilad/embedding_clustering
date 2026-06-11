@@ -89,9 +89,10 @@ Notes:
 ## Usage
 
 ```bash
-# Part A (3D glasses): render -> extract (DINOv2 + Point-MAE) -> cluster -> visualize
+# Part A (3D glasses): explore -> render -> extract (DINOv2 + Point-MAE) -> cluster -> visualize
 python main.py part-a all
 # individual stages:
+python main.py part-a explore   # inspect GLB structure/materials -> dataset_exploration.md
 python main.py part-a render
 python main.py part-a extract
 python main.py part-a cluster
@@ -147,6 +148,12 @@ labelled with the cluster's stats) are also written under `reports/` for quick a
 (render-based) features and a **3D** (mesh-based) feature each capture that similarity. We run
 two 2D encoders (DINOv2, CLIP) and one 3D encoder (Point-MAE).
 
+**Dataset exploration.** `part-a explore` inspects every GLB's internal structure (mesh
+components, vertex/face counts, materials, texturing, bounding extent) and writes
+[`reports/part_a/dataset_exploration.md`](reports/part_a/dataset_exploration.md). This is what
+revealed the assets are **multi-component Scenes** (→ apply node transforms when flattening) and
+that materials carry **real colour** the encoders deliberately ignore.
+
 **Pipeline.**
 1. **Load** each `.glb` with `trimesh` and flatten the scene to a single mesh **applying the
    scene-graph node transforms** (`Scene.dump(concatenate=True)` — see Challenges).
@@ -197,10 +204,13 @@ point geometry lands in between. **n = 14 is small, so these numbers are illustr
 per encoder where each glasses **render is placed at its UMAP point**, framed in its
 **cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics. It
 makes "which glasses landed in which cluster, for each feature" inspectable at a glance (and
-shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7). Also written:
-`*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables), `*_clusters_montage.png`
-(per-cluster thumbnail grids). The interactive `viewer.html` is the richest view (hover for a
-large colour render + id).
+shows CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7). **`feature_distributions.png`**
+analyses each encoder's embedding *directly* — the spread of pairwise cosine distances and the
+**intra- vs inter-cluster** gap (Δmean), a label-free read on how discriminative each feature is
+(a wider gap = more separable; it tracks the silhouette ordering DINOv2 > Point-MAE > CLIP).
+Also written: `*_kmeans_umap.png` (plain scatters), `*_metrics.png` (metric tables),
+`*_clusters_montage.png` (per-cluster thumbnail grids). The interactive `viewer.html` is the
+richest view (hover for a large colour render + id).
 
 ---
 

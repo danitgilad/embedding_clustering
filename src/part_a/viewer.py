@@ -47,7 +47,7 @@ def _part_a_projections(cfg: Config, out_dir: Path) -> tuple[list[dict], list[st
         coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
         res = cluster(X, algo, cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max, cfg.seed)
         items.append({"name": npy.stem, "modality": modality.get(npy.stem, "?"),
-                      "coords": coords, "labels": res.labels,
+                      "coords": coords, "labels": res.labels, "X": X,
                       "metrics": M.internal_metrics(X, res.labels)})
     return items, ids
 
@@ -85,6 +85,58 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
     out_html.write_text(html)
     log.info("Wrote %s", out_html)
     return out_html
+
+
+def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
+                                      out_path: str | Path | None = None) -> Path:
+    """One static PNG analysing each encoder's *feature distribution* and *discriminative power*.
+
+    Per encoder (row): (left) histogram of all pairwise cosine distances — the spread of the
+    embedding space; (right) the same distances split into intra-cluster vs inter-cluster, whose
+    gap (mean_inter − mean_intra) is a label-free measure of how separable the features are. This
+    is the "explore distributions and discriminative properties / compare expressiveness" view —
+    complementary to the clustering metrics, working on the embeddings directly."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    out_dir = Path(out_dir)
+    items, _ = _part_a_projections(cfg, out_dir)
+    n = len(items)
+    fig, axes = plt.subplots(n, 2, figsize=(12, 3.4 * n), dpi=130, squeeze=False)
+    for row, it in zip(axes, items):
+        X = np.asarray(it["X"], dtype=float)
+        labels = np.asarray(it["labels"])
+        # cosine distance on the (preprocess already l2-normalised) embeddings
+        Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12)
+        dist = 1.0 - Xn @ Xn.T
+        iu = np.triu_indices(len(X), k=1)
+        alld = dist[iu]
+        same = labels[iu[0]] == labels[iu[1]]
+        intra, inter = alld[same], alld[~same]
+
+        ax_l, ax_r = row
+        ax_l.hist(alld, bins=24, color="#4C72B0", alpha=0.85)
+        ax_l.set_title(f"{it['name']} · {it['modality']} — pairwise cosine distances", fontsize=10)
+        ax_l.set_xlabel("cosine distance"); ax_l.set_ylabel("pair count")
+
+        gap = (float(inter.mean()) - float(intra.mean())) if len(intra) and len(inter) else float("nan")
+        for data, colour, lab in ((intra, "#55A868", "intra-cluster"), (inter, "#C44E52", "inter-cluster")):
+            if len(data):
+                ax_r.hist(data, bins=20, density=True, color=colour, alpha=0.55, label=lab)
+        ax_r.set_title(f"intra vs inter — separation (Δmean) = {gap:.3f}", fontsize=10)
+        ax_r.set_xlabel("cosine distance"); ax_r.set_ylabel("density"); ax_r.legend(fontsize=8)
+
+    fig.suptitle("Part A — feature-distribution & discriminability analysis "
+                 "(larger intra↔inter gap = more discriminative features)", fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
+    ensure_dir(out_path.parent)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    log.info("Wrote %s", out_path)
+    return out_path
 
 
 def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Path,
