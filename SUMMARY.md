@@ -27,6 +27,9 @@ better capture "similar-looking glasses"?
 | Point-MAE (3D) | 0.407 |
 | CLIP (2D) | 0.358 |
 
+(KMeans shown; **Agglomerative is a robustness cross-check** — same DINOv2 > Point-MAE ordering, so
+the ranking isn't a KMeans artifact. It appears as numbers only, KMeans carries the visual narrative.)
+
 **Conclusion:** this is really **shape-from-2D-render vs shape-from-3D-points** (colour is not a
 factor). DINOv2 separates best, but **CLIP — also 2D — does worst**, so it isn't "2D beats 3D";
 it's that **DINOv2's fine-grained features** beat both pure geometry and CLIP's coarser,
@@ -131,6 +134,8 @@ as a qualitative map to explore alongside the metrics, never as the evidence its
 - Embeddings **cached to `.npy`** → decouples heavy GPU/CPU encoding from instant analysis/replots.
 - **Point-MAE reimplemented in pure-torch** to run CPU-only (upstream is CUDA-coupled).
 - **Interactive HTML viewers** (Plotly, self-contained): Part A glasses as cluster-coloured
-  cards (colour render on hover); Part B faces on hover with age/gender/pose.
+  cards (colour render on hover); Part B faces on hover with age/gender/pose. Each encoder button
+  also switches a **feature-distance histogram** beside the scatter (Part A: intra/inter-cluster;
+  Part B: same/different gender & age — density + marked means, mirroring `feature_distributions.png`).
 - Caught via review: GLB scene-graph transform bug; InsightFace missing frame-filling faces
   (det_size 640→320 recovered 123→500).
