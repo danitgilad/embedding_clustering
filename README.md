@@ -137,15 +137,17 @@ python main.py part-b viewer   # -> outputs/part_b/viewer.html
 
 Committed copies: **[`reports/part_a/viewer.html`](reports/part_a/viewer.html)** and
 **[`reports/part_b/viewer.html`](reports/part_b/viewer.html)**. Each has a **button per
-encoder** (toggle the feature/model) and a **per-encoder clustering-quality table** (best cell
-highlighted). It's decoupled from encoding — the stage reads the cached `*.npy`, recomputes
+encoder** (toggle the feature/model), a **per-encoder clustering-quality table** (best cell
+highlighted), and — beside the scatter — a **feature-distance histogram that switches with the
+selected encoder**. It's decoupled from encoding — the stage reads the cached `*.npy`, recomputes
 UMAP + clusters deterministically, and renders — so the HTML can be rebuilt/restyled instantly.
 
 - **Part A** — each point is a glasses asset shown as its **rendered thumbnail on a
-  cluster-coloured card** (umap_viewer style); hover shows the id.
+  cluster-coloured card** (umap_viewer style); hover shows the id. The side histogram is the
+  **intra- vs inter-cluster** distance distribution (Δmean per encoder).
 - **Part B** — a UMAP scatter coloured by cluster; **hover any point to see that face** plus
-  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs, keeping
-  the 500-point file ~2 MB).
+  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs). The side
+  histogram is the **same- vs different-gender** distance distribution (Δmean per encoder).
 
 Static PNGs (UMAP scatters, metric tables, and **annotated per-cluster montages** — each row
 labelled with the cluster's stats) are also written under `reports/` for quick at-a-glance review.

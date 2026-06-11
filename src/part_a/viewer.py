@@ -54,11 +54,28 @@ def _part_a_projections(cfg: Config, out_dir: Path) -> tuple[list[dict], list[st
 
 def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path) -> Path:
     """Assemble outputs/part_a/viewer.html from every <encoder>.npy in out_dir."""
+    import numpy as np
+    from src.core.html_viewer import make_hist_spec
     out_dir, render_dir = Path(out_dir), Path(render_dir)
     items, ids = _part_a_projections(cfg, out_dir)
     projections = {f"{it['name']} · {it['modality']}":
                    {"coords2d": it["coords"], "labels": it["labels"], "metrics": it["metrics"]}
                    for it in items}
+    # per-encoder feature-distance histogram (intra- vs inter-cluster), switched with the scatter
+    hist = {}
+    for it in items:
+        X = np.asarray(it["X"], dtype=float)
+        labels = np.asarray(it["labels"])
+        Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12)
+        iu = np.triu_indices(len(X), k=1)
+        d = (1.0 - Xn @ Xn.T)[iu]
+        same = labels[iu[0]] == labels[iu[1]]
+        intra, inter = d[same], d[~same]
+        gap = (float(inter.mean()) - float(intra.mean())) if len(intra) and len(inter) else float("nan")
+        hist[f"{it['name']} · {it['modality']}"] = make_hist_spec(
+            f"Intra- vs inter-cluster distance · Δmean = {gap:.3f} (larger = more discriminative)",
+            "cosine distance",
+            [("intra-cluster", "#55A868", intra), ("inter-cluster", "#C44E52", inter)])
     thumbs = [image_to_data_uri(render_dir / f"{sanitize_id(i)}_v0.png", max_px=128) for i in ids]
     # coloured renders (textures baked) used only in the larger hover popup; fall back to the
     # grey on-plot thumbnail if a coloured render is missing.
@@ -78,8 +95,10 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
                f"switch between them to compare. <b>Note:</b> the renders are shown in colour "
                f"for inspection, but the 2D encoders embed <b>greyscale</b> shape renders and "
                f"Point-MAE uses mesh geometry — <b>colour &amp; texture are not used</b> by the "
-               f"clustering."),
-        always_show_thumbs=True, thumb_scale=2.0, hover_thumbs=hover_thumbs,
+               f"clustering. The <b>feature-distance histogram beside the scatter</b> "
+               f"(intra- vs inter-cluster cosine distance) switches with the selected encoder — a "
+               f"wider gap = more discriminative features."),
+        always_show_thumbs=True, thumb_scale=2.0, hover_thumbs=hover_thumbs, hist=hist,
         page_title="Part A — Glasses Cluster Viewer")
     out_html = out_dir / "viewer.html"
     out_html.write_text(html)

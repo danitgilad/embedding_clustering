@@ -100,12 +100,47 @@ def _figure_json(proj: dict, ids, thumbs, hover_meta, always_show_thumbs: bool,
             images.append(dict(source=thumbs[j], xref="x", yref="y", x=xi, y=yi,
                                sizex=isz, sizey=isz, xanchor="center", yanchor="middle",
                                sizing="contain", layer="above"))
-    fig.update_layout(width=960, height=760, plot_bgcolor="#f8f8f8",
+    fig.update_layout(width=840, height=650, plot_bgcolor="#f8f8f8",
                       xaxis=dict(title="UMAP 1", zeroline=False),
                       yaxis=dict(title="UMAP 2", zeroline=False),
-                      legend=dict(itemsizing="constant"),
-                      margin=dict(l=55, r=160, t=10, b=45),
+                      legend=dict(itemsizing="constant", orientation="v", x=1.02, y=1),
+                      margin=dict(l=50, r=130, t=10, b=45),
                       images=images, shapes=shapes)
+    return fig.to_json().replace("\\u002f", "/")
+
+
+def make_hist_spec(title: str, xlabel: str, named_arrays, n_bins: int = 30) -> dict:
+    """Pre-bin several distance arrays onto a shared axis → a hist spec for the viewer.
+
+    named_arrays: list of (name, color, values). Binning here (not client-side) keeps the HTML
+    small even for Part B's ~125k pairs.
+    """
+    arrs = [(n, c, np.asarray(v, dtype=float)) for n, c, v in named_arrays]
+    allv = np.concatenate([v for _, _, v in arrs if len(v)]) if arrs else np.array([0.0])
+    edges = np.linspace(float(allv.min()), float(allv.max()) or 1.0, n_bins + 1)
+    centers = ((edges[:-1] + edges[1:]) / 2).tolist()
+    series = [{"name": n, "color": c, "x": centers,
+               "y": (np.histogram(v, bins=edges)[0].tolist() if len(v) else [0] * n_bins)}
+              for n, c, v in arrs]
+    return {"title": title, "xlabel": xlabel, "series": series}
+
+
+def _hist_figure_json(spec: dict) -> str:
+    """One Plotly figure (JSON) for a pre-binned feature-distance histogram. `spec` =
+    {title, xlabel, series:[{name,color,x,y}]} where x=bin centres, y=counts."""
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    for s in spec["series"]:
+        fig.add_trace(go.Bar(x=s["x"], y=s["y"], name=s["name"],
+                             marker_color=s["color"], opacity=0.6))
+    fig.update_layout(width=560, height=400, barmode="overlay",
+                      title=dict(text=spec["title"], font=dict(size=12)),
+                      xaxis=dict(title=spec["xlabel"], zeroline=False),
+                      yaxis=dict(title="pair count", zeroline=False),
+                      bargap=0, plot_bgcolor="#f8f8f8",
+                      legend=dict(orientation="h", y=-0.18, x=0),
+                      margin=dict(l=55, r=20, t=42, b=70))
     return fig.to_json().replace("\\u002f", "/")
 
 
@@ -137,6 +172,7 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
                       hover_meta: dict[str, dict] | None, *, title: str, intro: str,
                       always_show_thumbs: bool, thumb_scale: float = 1.0,
                       hover_thumbs: list[str] | None = None, extra_html: str = "",
+                      hist: dict[str, dict] | None = None,
                       page_title: str = "Embedding Cluster Viewer") -> str:
     """Render the full self-contained explorer HTML.
 
@@ -147,6 +183,8 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
     thumb_scale: multiplier on the always-visible thumbnail image size (card stays fixed).
     extra_html: optional HTML block injected below the metrics table (e.g. a k-selection
     comparison); empty by default.
+    hist: optional {encoder_name: hist_spec} — a pre-binned feature-distance histogram shown
+    below each scatter and switched together with it (see _hist_figure_json for the spec).
     """
     names = list(projections)
     specs = {n: _figure_json(projections[n], ids, thumbs, hover_meta, always_show_thumbs,
@@ -154,42 +192,49 @@ def build_viewer_html(projections: dict[str, dict], ids: list[str], thumbs: list
              for n in names}
     specs_js = ",\n".join(f"'{n}': {s}" for n, s in specs.items())
     keys_js = ", ".join(f"'{n}'" for n in names)
+    hist_js = ",\n".join(f"'{n}': {_hist_figure_json(hist[n])}" for n in names if hist and n in hist)
     btns = "".join(
         f'<button id="b_{n}" onclick="show(\'{n}\')" class="tb{ " act" if i==0 else "" }">{n}</button>'
         for i, n in enumerate(names))
     divs = "".join(
-        f'<div id="v_{n}" class="view"{"" if i==0 else " style=display:none"}></div>'
+        f'<div id="view_{n}" class="view"{"" if i==0 else " style=display:none"}>'
+        f'<div id="v_{n}"></div><div id="h_{n}" style="margin-top:6px"></div></div>'
         for i, n in enumerate(names))
     table = _metrics_table(projections)
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <title>{page_title}</title>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-<style>body{{font-family:sans-serif;margin:0;padding:14px 18px}}
-h2{{margin:0 0 4px}} p{{color:#555;font-size:13px;margin:2px 0 8px}}
-.tb{{padding:7px 15px;margin-right:7px;border:1px solid #aaa;border-radius:4px;cursor:pointer;background:#f0f0f0}}
-.tb.act{{background:#2c3e50;color:#fff}}
-table.m{{border-collapse:collapse;font-size:12px;margin:6px 0 12px}}
+<style>body{{font-family:sans-serif;margin:0;padding:14px 22px;color:#222}}
+h2{{margin:0 0 4px}} p{{color:#555;font-size:13px;margin:2px 0 8px;max-width:1180px;line-height:1.5}}
+.tb{{padding:7px 15px;margin-right:7px;border:1px solid #aaa;border-radius:4px;cursor:pointer;background:#f0f0f0;font-size:13px}}
+.tb.act{{background:#2c3e50;color:#fff;border-color:#2c3e50}}
+table.m{{border-collapse:collapse;font-size:12px;margin:6px 0 10px}}
 table.m th,table.m td{{border:1px solid #ddd;padding:4px 9px;text-align:right}}
 table.m th{{background:#0f3460;color:#fff}} table.m td:first-child,table.m th:first-child{{text-align:left}}
-table.m td.win{{background:#cdebcd;font-weight:700}}</style></head>
+table.m td.win{{background:#cdebcd;font-weight:700}}
+.bar{{margin:10px 0 6px}}
+.view{{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-top:6px}}
+.view>div{{box-shadow:0 1px 4px rgba(0,0,0,.12);border-radius:6px;background:#fff;padding:6px}}</style></head>
 <body><h2>{title}</h2><p>{intro}</p>
 <p style="margin-top:0"><b>Clustering quality per encoder</b> (silhouette ↑, Davies–Bouldin ↓,
 Calinski–Harabasz ↑; green = best):</p>{table}
 {extra_html}
-<div style="margin:8px 0">{btns}</div>{divs}
+<div class="bar">{btns}</div>{divs}
 <div id="tip" style="position:fixed;display:none;z-index:9;background:#fff;border:1px solid #ccc;
 border-radius:6px;padding:7px;box-shadow:2px 4px 14px rgba(0,0,0,.25);font:12px/1.4 sans-serif;
 text-align:center;max-width:300px"></div>
 <script>
-var S={{ {specs_js} }}, K=[{keys_js}], R={{}};
+var S={{ {specs_js} }}, H={{ {hist_js} }}, K=[{keys_js}], R={{}};
 function tip(el){{var t=document.getElementById('tip');
   el.on('plotly_hover',function(e){{var d=e.points[0].customdata;var h='';
     if(d[2])h+='<img src="'+d[2]+'" style="max-width:280px;max-height:280px;display:block;margin:0 auto 4px">';
     h+='<b>'+d[0]+'</b><br>cluster '+d[1]+(d[3]?'<br>'+d[3]:'');t.innerHTML=h;
     var b=e.points[0].bbox||{{}};t.style.left=((b.x1||0)+12)+'px';t.style.top=((b.y0||0)-8)+'px';t.style.display='block';}});
   el.on('plotly_unhover',function(){{t.style.display='none';}});}}
-function show(n){{K.forEach(function(k){{var d=document.getElementById('v_'+k),b=document.getElementById('b_'+k);
+function show(n){{K.forEach(function(k){{var d=document.getElementById('view_'+k),b=document.getElementById('b_'+k);
   d.style.display=(k===n?'':'none');b.className='tb'+(k===n?' act':'');}});
-  var div=document.getElementById('v_'+n);if(!R[n]){{Plotly.newPlot(div,S[n].data,S[n].layout,{{responsive:false}});R[n]=1;setTimeout(function(){{tip(div);}},400);}}}}
+  if(!R[n]){{var sv=document.getElementById('v_'+n);Plotly.newPlot(sv,S[n].data,S[n].layout,{{responsive:false,displayModeBar:false}});
+    if(H[n]){{Plotly.newPlot(document.getElementById('h_'+n),H[n].data,H[n].layout,{{responsive:false,displayModeBar:false}});}}
+    R[n]=1;setTimeout(function(){{tip(sv);}},400);}}}}
 show(K[0]);
 </script></body></html>"""
