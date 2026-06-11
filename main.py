@@ -123,6 +123,12 @@ def _run_part_b(cfg, stage: str) -> None:
         for enc in cfg.part_b.encoders:
             if (out / f"{enc}.npy").exists():
                 build_part_b_overview(cfg, out, data_dir, encoder=enc)
+        # ArcFace's OTHER k-selection alongside the default, so both partitions
+        # (attribute-k=3 and silhouette-k=6) have a static overview to compare.
+        if (out / "arcface.npy").exists():
+            other = "silhouette" if cfg.part_b.clustering.k_selection == "attribute" else "attribute"
+            build_part_b_overview(cfg, out, data_dir, encoder="arcface", k_selection=other,
+                                  out_path=out / "figures" / f"part_b_overview_arcface_{other}.png")
 
 
 def main(argv: list[str] | None = None) -> None:

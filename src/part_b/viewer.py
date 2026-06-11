@@ -115,11 +115,15 @@ def _k_selection_table(X: np.ndarray, gender: np.ndarray, age: np.ndarray, algo:
 
 def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Path,
                           encoder: str = "arcface", out_path: str | Path | None = None,
-                          n_faces: int = 110) -> Path:
+                          n_faces: int = 110, k_selection: str | None = None) -> Path:
     """Static PNG for one face encoder: its UMAP shown by cluster / predicted gender / predicted
     age. TOP row = coloured points only (unoccluded); BOTTOM row = the same layout with a dense
     sample of face thumbnails overlaid (border = that column's category). Predicted gender/age
-    are InsightFace model outputs (not a projection) — the same layout is merely recoloured."""
+    are InsightFace model outputs (not a projection) — the same layout is merely recoloured.
+
+    `k_selection` ("attribute" → AMI-driven k, "silhouette" → geometric k) overrides the configured
+    default, letting both partitions of the same encoder be emitted as separate figures (e.g.
+    ArcFace attribute-k=3 vs silhouette-k=6)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -139,8 +143,8 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
     age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in ids])
     algo = cfg.part_b.clustering.algorithms[0]
     has_attr = (out_dir / f"{encoder}_attributes.json").exists()
-    score_fn = (attribute_score_fn(gender, age)
-                if (cfg.part_b.clustering.k_selection == "attribute" and has_attr) else None)
+    sel = k_selection or cfg.part_b.clustering.k_selection
+    score_fn = (attribute_score_fn(gender, age) if (sel == "attribute" and has_attr) else None)
     res = cluster(X, algo, cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max,
                   cfg.seed, score_fn=score_fn)
     labels = np.asarray(res.labels)
@@ -190,8 +194,11 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
              "by gender (and age). Top = points only; bottom = a dense face sample.",
              ha="center", va="top", fontsize=9, style="italic", color="#333")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
-    name = "part_b_overview.png" if encoder == "arcface" else f"part_b_overview_{encoder}.png"
-    out_path = Path(out_path) if out_path else out_dir / "figures" / name
+    base = "part_b_overview" if encoder == "arcface" else f"part_b_overview_{encoder}"
+    # suffix only when an explicit k_selection differs from the configured default, so the
+    # primary figure keeps its stable name and the extra partition lands in its own file.
+    suffix = f"_{sel}" if (k_selection and k_selection != cfg.part_b.clustering.k_selection) else ""
+    out_path = Path(out_path) if out_path else out_dir / "figures" / f"{base}{suffix}.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)

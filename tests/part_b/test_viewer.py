@@ -33,3 +33,13 @@ def test_build_part_b_overview_writes_png(tmp_path):
     cfg = load_config("config/default.yaml")
     png = build_part_b_overview(cfg, out_dir=out, faces_dir=faces)
     assert png.exists() and png.stat().st_size > 0
+
+
+def test_build_part_b_overview_k_selection_override_separate_file(tmp_path):
+    out, faces, _ = _fixture(tmp_path)
+    cfg = load_config("config/default.yaml")
+    default = build_part_b_overview(cfg, out_dir=out, faces_dir=faces)
+    other = "silhouette" if cfg.part_b.clustering.k_selection == "attribute" else "attribute"
+    override = build_part_b_overview(cfg, out_dir=out, faces_dir=faces, k_selection=other)
+    # the explicit override lands in its own file, leaving the primary figure untouched
+    assert override.exists() and override != default and other in override.name

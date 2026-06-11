@@ -280,9 +280,10 @@ the same continuous-manifold signature HDBSCAN showed.
 **Figures** (`reports/part_b/`): the main one is **`part_b_overview.png`** — the ArcFace UMAP
 shown three ways (by **cluster**, **gender**, **age**) in two rows: top = coloured points only
 (unoccluded), bottom = the same layout with a dense face sample overlaid, so you can *see* the
-clusters tracking gender + age. The same figure is generated per encoder —
-`part_b_overview_dinov2_generic.png` is the generic-backbone ablation. Also:
-`arcface_clusters_montage.png`
+clusters tracking gender + age. The same figure is generated per encoder and per k-selection:
+`part_b_overview_arcface_silhouette.png` is the silhouette **k=6** partition (vs the default
+attribute **k=3**), and `part_b_overview_dinov2_generic.png` is the generic-backbone ablation.
+Also: `arcface_clusters_montage.png`
 (sample faces per cluster), `*_umap.png` scatters, `arcface_metrics.png`. Per-cluster profiles
 in `arcface_results.json`. (Unlike Part A, the encoders here embed the **colour** face crop —
 colour *is* used.)
