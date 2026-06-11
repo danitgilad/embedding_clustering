@@ -191,7 +191,13 @@ feature separates the glasses most cleanly**:
 | Point-MAE (3D mesh)     | 7 | 0.407        | 1.008            | 3.002               |
 | CLIP (2D render)        | 3 | 0.358        | 1.382            | 3.560               |
 
-(Agglomerative shows the same DINOv2 > Point-MAE ordering: 0.489 vs 0.407 silhouette.)
+**Agglomerative is a cross-check, not a separate result.** Alongside KMeans we also cluster with
+**Agglomerative (Ward)** — a hierarchical method with different assumptions than centroid-based
+KMeans — purely to confirm the encoder ranking is *algorithm-robust*. It gives the **same DINOv2 >
+Point-MAE ordering** (0.489 vs 0.407 silhouette), so the result isn't an artifact of one algorithm.
+That's why Agglomerative appears only as *numbers* — the `*_metrics.png` table and the overview's
+*Agglo. sil* column — and is never visualized separately: the KMeans partition carries the visual
+narrative.
 
 **Is the different k fair?** Yes. *k* is chosen **per encoder by the same rule** — the silhouette
 sweep over k∈[2,8]. DINOv2/Point-MAE peak at **k=7**, CLIP at **k=3**; that difference is *itself a

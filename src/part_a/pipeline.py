@@ -76,7 +76,8 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
     metric_table_png({a: {k: v for k, v in r.items() if k != "n_clusters"}
                       for a, r in results.items()},
                      fig_dir / f"{extractor.name}_metrics.png",
-                     title=f"{extractor.name} clustering metrics (KMeans vs Agglomerative)")
+                     title=f"{extractor.name} clustering metrics — KMeans (primary) vs "
+                           f"Agglomerative (robustness cross-check)")
     # Per-cluster montage (primary algorithm = KMeans). The plain per-algorithm UMAP scatters
     # are intentionally NOT written for Part A — part_a_overview.png + the interactive viewer
     # cover the same ground far more richly (renders, GLB ids, cluster colours, metrics table).
