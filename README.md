@@ -206,7 +206,8 @@ point geometry lands in between. **n = 14 is small, so these numbers are illustr
 
 **Feature-distribution cross-check.** To confirm the ranking isn't an artifact of one clustering,
 [`feature_distributions.png`](reports/part_a/feature_distributions.png) measures discriminability *straight from the embeddings*: for each
-encoder we take all pairwise **cosine distances** and split them into *intra-cluster* vs
+encoder we take **its 14 GLB embedding vectors** and compute all **C(14,2)=91 pairwise cosine
+distances**, splitting them into *intra-cluster* vs
 *inter-cluster*; the gap between their means (**Δmean = mean_inter − mean_intra**) says how
 cleanly same-cluster items sit closer than different-cluster items. The ordering is **identical to
 silhouette — DINOv2 0.69 > Point-MAE 0.53 > CLIP 0.38** — and the histograms make CLIP's weakness
@@ -230,6 +231,9 @@ per encoder where each glasses **render is placed at its UMAP point**, framed in
 **cross-encoder comparison table** (k\*, silhouette, Davies–Bouldin, Calinski–Harabasz, agglomerative,
 and the fixed-k=6 column) and a one-line takeaway. It makes "which glasses landed in which cluster,
 for each feature" inspectable at a glance (CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
+**[`part_a_k6_umap.png`](reports/part_a/part_a_k6_umap.png)** is the visual companion to that fixed-k
+column — every encoder's clustering at the **common k=6** on one UMAP each, so the partitions are
+directly comparable with k held equal.
 **[`feature_distributions.png`](reports/part_a/feature_distributions.png)** is the figure behind
 the *Feature-distribution cross-check* above (pairwise-distance spread + the intra/inter Δmean per
 encoder, with a "how to read" caption). Also written:

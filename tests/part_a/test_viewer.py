@@ -2,8 +2,8 @@ import json
 import numpy as np
 from PIL import Image
 from src.config import load_config
-from src.part_a.viewer import (build_feature_distribution_figure, build_part_a_overview,
-                               build_part_a_viewer)
+from src.part_a.viewer import (build_feature_distribution_figure, build_part_a_fixed_k_review,
+                               build_part_a_overview, build_part_a_viewer)
 
 
 def _fixture(tmp_path):
@@ -38,4 +38,11 @@ def test_build_feature_distribution_figure_writes_png(tmp_path):
     out, _, _ = _fixture(tmp_path)
     cfg = load_config("config/default.yaml")
     png = build_feature_distribution_figure(cfg, out_dir=out)
+    assert png.exists() and png.stat().st_size > 0
+
+
+def test_build_part_a_fixed_k_review_writes_png(tmp_path):
+    out, renders, _ = _fixture(tmp_path)
+    cfg = load_config("config/default.yaml")
+    png = build_part_a_fixed_k_review(cfg, out_dir=out, render_dir=renders, k=3)
     assert png.exists() and png.stat().st_size > 0

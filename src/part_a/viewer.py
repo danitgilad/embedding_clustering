@@ -135,7 +135,11 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
 
     ranking = " > ".join(f"{nm} ({g:.2f})" for nm, g in
                          sorted(gaps.items(), key=lambda kv: kv[1], reverse=True))
-    fig.suptitle("Part A — feature-distribution & discriminability analysis", fontsize=14, y=0.99)
+    n_assets = len(items[0]["X"])
+    n_pairs = n_assets * (n_assets - 1) // 2
+    fig.suptitle(f"Part A — feature-distribution & discriminability analysis   "
+                 f"(each encoder's {n_assets} GLB embeddings → {n_pairs} pairwise distances)",
+                 fontsize=13, y=0.99)
     fig.text(0.5, 0.005,
              "How to read — LEFT: the spread of all pairwise distances in the embedding (a left "
              "tail near 0 = near-duplicate assets). RIGHT: those same distances split by whether "
@@ -153,23 +157,16 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
     return out_path
 
 
-def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Path,
-                          out_path: str | Path | None = None, thumb_px: int = 72) -> Path:
-    """One static PNG: a panel per encoder, each glasses render placed at its UMAP point with
-    a cluster-coloured border + its GLB id, and the encoder's metrics in the panel title."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+def _glasses_thumbs(render_dir: Path, ids, thumb_px: int) -> dict:
+    """id -> RGBA thumbnail of the colour render (cropped to the subject + scaled to fill the
+    box), or None if missing. Shared by the UMAP-panel figures."""
     import numpy as np
-    from matplotlib.offsetbox import AnnotationBbox, OffsetImage
     from PIL import Image
-
-    out_dir, render_dir = Path(out_dir), Path(render_dir)
-    items, ids = _part_a_projections(cfg, out_dir)
-    colored = render_dir / "colored"
-
-    def thumb(i: str) -> "np.ndarray | None":
-        for p in (colored / f"{sanitize_id(i)}_v0.png", render_dir / f"{sanitize_id(i)}_v0.png"):
+    out: dict = {}
+    for i in ids:
+        out[i] = None
+        for p in (render_dir / "colored" / f"{sanitize_id(i)}_v0.png",
+                  render_dir / f"{sanitize_id(i)}_v0.png"):
             if not p.exists():
                 continue
             im = Image.open(p).convert("RGBA")
@@ -181,10 +178,92 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
             im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
             canvas = Image.new("RGBA", (thumb_px, thumb_px), (0, 0, 0, 0))
             canvas.paste(im, ((thumb_px - im.size[0]) // 2, (thumb_px - im.size[1]) // 2))
-            return np.asarray(canvas)
-        return None
+            out[i] = np.asarray(canvas)
+            break
+    return out
 
-    imgs = {i: thumb(i) for i in ids}
+
+def _draw_glasses_umap(ax, coords, labels, ids, imgs, cmap, title) -> None:
+    """Draw one encoder's UMAP panel: each glasses thumbnail at its point, border = cluster
+    colour, GLB id beneath, `title` above. (Shared by the overview and the fixed-k review.)"""
+    import numpy as np
+    from matplotlib.offsetbox import AnnotationBbox, OffsetImage
+    labels = np.asarray(labels)
+    uniq = sorted({int(v) for v in labels})
+    col = {c: cmap(k % 10) for k, c in enumerate(uniq)}
+    xs, ys = coords[:, 0], coords[:, 1]
+    padx = (float(xs.max() - xs.min()) or 1.0) * 0.18
+    pady = (float(ys.max() - ys.min()) or 1.0) * 0.20
+    ax.set_xlim(xs.min() - padx, xs.max() + padx)
+    ax.set_ylim(ys.min() - pady, ys.max() + pady)
+    for j, i in enumerate(ids):
+        c = col[int(labels[j])]
+        im = imgs.get(i)
+        if im is not None:
+            ab = AnnotationBbox(OffsetImage(im, zoom=1.0), (xs[j], ys[j]), frameon=True,
+                                pad=0.1, bboxprops=dict(edgecolor=c, lw=2.5))
+            ab.set_clip_on(False)
+            ax.add_artist(ab)
+        else:
+            ax.scatter([xs[j]], [ys[j]], color=c, s=80)
+        ax.annotate(i, (xs[j], ys[j]), textcoords="offset points", xytext=(0, -30),
+                    ha="center", va="top", fontsize=6.5, color="#222",
+                    bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7))
+    ax.set_title(title, fontsize=11)
+    ax.set_xlabel("UMAP 1", fontsize=9); ax.set_ylabel("UMAP 2", fontsize=9)
+    ax.set_xticks([]); ax.set_yticks([])
+
+
+def build_part_a_fixed_k_review(cfg: Config, out_dir: str | Path, render_dir: str | Path,
+                                k: int = 6, out_path: str | Path | None = None,
+                                thumb_px: int = 72) -> Path:
+    """UMAP review of ALL encoders clustered at one COMMON k (default 6): a panel per encoder,
+    glasses placed on its UMAP and coloured by KMeans@k. Pairs with the overview's fixed-k column
+    — holding k equal removes k as a variable, so the partitions are directly comparable."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    out_dir, render_dir = Path(out_dir), Path(render_dir)
+    items, ids = _part_a_projections(cfg, out_dir)
+    imgs = _glasses_thumbs(render_dir, ids, thumb_px)
+    n = len(items)
+    cmap = plt.get_cmap("tab10")
+    fig, axes = plt.subplots(1, n, figsize=(7.5 * n, 8.4), dpi=130, squeeze=False)
+    for ax, it in zip(axes[0], items):
+        X = np.asarray(it["X"], dtype=float)
+        res = cluster(X, "kmeans", k, k, cfg.seed)
+        sil = M.internal_metrics(X, res.labels)["silhouette"]
+        _draw_glasses_umap(ax, it["coords"], res.labels, ids, imgs, cmap,
+                           f"{it['name']} · {it['modality']}\nKMeans @ k={k} · silhouette={sil:.3f}")
+    fig.suptitle(f"Part A — every encoder clustered at a COMMON k={k} (UMAP)   "
+                 "— holding k equal isolates the feature, so the partitions are directly comparable",
+                 fontsize=12, y=0.99)
+    fig.text(0.5, 0.95, "Renders shown in colour for inspection only — colour & texture are NOT "
+             "used by the clustering.", ha="center", va="top", fontsize=9, style="italic",
+             color="#b00000")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    out_path = Path(out_path) if out_path else out_dir / "figures" / f"part_a_k{k}_umap.png"
+    ensure_dir(out_path.parent)
+    fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
+    log.info("Wrote %s", out_path)
+    return out_path
+
+
+def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Path,
+                          out_path: str | Path | None = None, thumb_px: int = 72) -> Path:
+    """One static PNG: a panel per encoder, each glasses render placed at its UMAP point with
+    a cluster-coloured border + its GLB id, the encoder's metrics in the panel title, and a
+    cross-encoder comparison table (incl. a fixed-k column) + takeaway beneath."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    out_dir, render_dir = Path(out_dir), Path(render_dir)
+    items, ids = _part_a_projections(cfg, out_dir)
+    imgs = _glasses_thumbs(render_dir, ids, thumb_px)
     n = len(items)
     fixed_k = min(6, cfg.part_a.clustering.k_max)
     k_min, k_max = cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max
@@ -207,35 +286,12 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
     cmap = plt.get_cmap("tab10")
     for c_idx, it in enumerate(items):
         ax = fig.add_subplot(gs[0, c_idx])
-        coords, labels = it["coords"], it["labels"]
-        uniq = sorted({int(v) for v in labels})
-        col = {c: cmap(k % 10) for k, c in enumerate(uniq)}
-        xs, ys = coords[:, 0], coords[:, 1]
-        padx = (float(xs.max() - xs.min()) or 1.0) * 0.18
-        pady = (float(ys.max() - ys.min()) or 1.0) * 0.20
-        ax.set_xlim(xs.min() - padx, xs.max() + padx)
-        ax.set_ylim(ys.min() - pady, ys.max() + pady)
-        for j, i in enumerate(ids):
-            c = col[int(labels[j])]
-            im = imgs.get(i)
-            if im is not None:
-                ab = AnnotationBbox(OffsetImage(im, zoom=1.0), (xs[j], ys[j]), frameon=True,
-                                    pad=0.1, bboxprops=dict(edgecolor=c, lw=2.5))
-                ab.set_clip_on(False)
-                ax.add_artist(ab)
-            else:
-                ax.scatter([xs[j]], [ys[j]], color=c, s=80)
-            ax.annotate(i, (xs[j], ys[j]), textcoords="offset points", xytext=(0, -30),
-                        ha="center", va="top", fontsize=6.5, color="#222",
-                        bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7))
         m = it["metrics"]
-        ax.set_title(f"{it['name']} · {it['modality']}\n"
-                     f"k={len(uniq)} · silhouette={m['silhouette']:.3f} · "
-                     f"DB={m['davies_bouldin']:.2f} · CH={m['calinski_harabasz']:.2f}",
-                     fontsize=11)
-        ax.set_xlabel("UMAP 1", fontsize=9)
-        ax.set_ylabel("UMAP 2", fontsize=9)
-        ax.set_xticks([]); ax.set_yticks([])
+        _draw_glasses_umap(ax, it["coords"], it["labels"], ids, imgs, cmap,
+                           f"{it['name']} · {it['modality']}\n"
+                           f"k={len({int(v) for v in it['labels']})} · "
+                           f"silhouette={m['silhouette']:.3f} · DB={m['davies_bouldin']:.2f} · "
+                           f"CH={m['calinski_harabasz']:.2f}")
 
     # comparison table + takeaway spanning the bottom
     tax = fig.add_subplot(gs[1, :]); tax.axis("off")
@@ -245,6 +301,11 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
              f"{r[6]:.3f}"] for r in comp]
     t = tax.table(cellText=body, colLabels=cols, loc="upper center", cellLoc="center")
     t.auto_set_font_size(False); t.set_fontsize(9); t.scale(1, 1.5)
+    # bold the best value per quality column (col index matches comp tuple index)
+    for ci, direction in {2: "up", 3: "down", 4: "up", 5: "up", 6: "up"}.items():
+        col_vals = [r[ci] for r in comp]
+        bi = (max if direction == "up" else min)(range(len(col_vals)), key=lambda i: col_vals[i])
+        t[bi + 1, ci].set_text_props(fontweight="bold")
     best = max(comp, key=lambda r: r[2])[0].split(" · ")[0]
     worst = min(comp, key=lambda r: r[2])[0].split(" · ")[0]
     tax.text(0.5, -0.06,

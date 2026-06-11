@@ -91,9 +91,11 @@ def _run_part_a(cfg, stage: str) -> None:
             log.info("Part A %s: %s", ext.name, res)
     if stage in ("viewer", "all"):
         from src.part_a.viewer import (build_feature_distribution_figure,
-                                       build_part_a_overview, build_part_a_viewer)
+                                       build_part_a_fixed_k_review, build_part_a_overview,
+                                       build_part_a_viewer)
         build_part_a_viewer(cfg, out, render_dir)
         build_part_a_overview(cfg, out, render_dir)
+        build_part_a_fixed_k_review(cfg, out, render_dir, k=6)
         build_feature_distribution_figure(cfg, out)
 
 
