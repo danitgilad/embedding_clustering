@@ -14,8 +14,8 @@ reduce:
     metric: cosine
 
 part_a:
-  encoders_2d: [dinov2, clip]         # primary; optional later: pe_core
-  encoders_3d: [point_mae]            # primary; optional later: openshape
+  encoders_2d: [dinov2, clip]         # 2D features from rendered images
+  encoders_3d: [point_mae]            # 3D feature from the mesh
   render:
     size_px: 512
     supersample: 3

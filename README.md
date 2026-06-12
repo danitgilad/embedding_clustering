@@ -332,21 +332,16 @@ The pipeline's pluggable `FeatureExtractor` design makes adding an encoder a one
 and the viewers + metric tables pick it up automatically. Beyond the two primaries, additional
 encoders were run as comparisons:
 
-| Encoder | Part | Status | Result |
-|---|---|---|---|
-| DINOv2 (on renders) | A 2D | primary | best — silhouette 0.479 |
-| Point-MAE (mesh) | A 3D | primary | 0.407 |
-| **CLIP (on renders)** | A 2D | **added** | 0.358 — coarser/semantic, weakest here |
-| ArcFace | B | primary | gender purity 0.81 (attribute-meaningful) |
-| **DINOv2 (on faces)** | B | **added** | more separated *and* more gender-aligned (purity 0.896 > ArcFace 0.808) |
-| PE-Core (render) | A 2D | **deferred** | `perception_models` needs Python ≥3.11; box runs 3.10 |
-| OpenShape/ULIP-2 | A 3D | **deferred** | CUDA-coupled PointBERT; Point-MAE already covers learned-3D |
+| Encoder | Part | Result |
+|---|---|---|
+| DINOv2 (on renders) | A 2D | best — silhouette 0.479 |
+| Point-MAE (mesh) | A 3D | 0.407 |
+| CLIP (on renders) | A 2D | 0.358 — coarser/semantic, weakest here |
+| ArcFace | B | gender purity 0.81 (attribute-meaningful) |
+| DINOv2 (on faces) | B | more separated *and* more gender-aligned (purity 0.896 > ArcFace 0.808) |
 
 > The two DINOv2 rows are the **same model** (`facebook/dinov2-base`) on different inputs — glasses
 > renders (Part A) vs face crops (Part B).
-
-The two deferred encoders are documented rather than stubbed — each is a one-line re-enable
-(`encoders_2d`/`encoders_3d` in `config/default.yaml`) once its environment constraint is met.
 
 ---
 
