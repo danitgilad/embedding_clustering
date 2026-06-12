@@ -20,9 +20,15 @@ The **README** covers *approach and findings*; this file is the *glossary* — f
 
 ### DINOv2
 Self-supervised vision transformer (`facebook/dinov2-base`). We take the **CLS token → 768-d**
-per rendered view and mean-pool the 4 views into one vector. *Used:* Part A primary 2D feature;
-Part B generic-backbone ablation (on the colour face crop). *Why:* its self-distilled features
-are known to encode fine-grained shape/structure, which is exactly what separates similar frames.
+per image. *Used:* Part A primary 2D feature (on greyscale glasses renders — 4 views mean-pooled);
+Part B generic-backbone ablation (on the colour face crop). *Why:* its self-distilled features are
+known to encode fine-grained shape/structure, which is exactly what separates similar frames.
+
+> **`dinov2` vs `dinov2_generic` are the SAME model** — both `facebook/dinov2-base`, identical
+> weights. The "generic" label only marks its *role* in Part B: a general-purpose backbone used as
+> the control against the **face-specialised** ArcFace. The two only differ in input (multi-view
+> greyscale renders in Part A vs a single colour face crop in Part B), hence the separate extractor
+> modules.
 
 ### CLIP
 Image–text contrastive model (`openai/clip-vit-base-patch32`); we use the **image tower → 512-d**
