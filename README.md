@@ -169,9 +169,10 @@ deliberately ignore (greyscale shape / xyz geometry only).
 1. **Load** each `.glb` with `trimesh` and flatten the scene to a single mesh **applying the
    scene-graph node transforms** (`Scene.dump(concatenate=True)` — see Challenges).
 2. **2D features (DINOv2 + CLIP).** Render each asset from 4 fixed viewpoints off the
-   *triangulated mesh surface* — **greyscale** (shape + shading, no colour/texture) — and embed
-   each view with a frozen vision encoder, mean-pooling the views to one vector per asset. We
-   use **DINOv2** (`facebook/dinov2-base`, CLS token → 768-d) as the primary 2D feature and
+   *triangulated mesh surface* — **greyscale** (shape + shading, no colour/texture) — embed
+   **each view independently** with a frozen vision encoder, then **mean-pool** (average) the 4
+   per-view vectors into one vector per asset — an order-invariant, fixed-size aggregation (*not*
+   concatenation). We use **DINOv2** (`facebook/dinov2-base`, CLS token → 768-d) as the primary 2D feature and
    **CLIP** (`openai/clip-vit-base-patch32`, image features → 512-d) as a second 2D encoder, to
    test whether *any* 2D render feature wins or DINOv2 specifically. (Colour is not used — see
    the note under Findings.)
@@ -257,8 +258,9 @@ identity signal to recover — the only structure to find is **attributes**.
    > DINOv2 ablation (a different embedding scored against ArcFace's *independent* labels)
    > is the cleaner test — and it still groups by gender, which corroborates the finding.
 
-**Findings (ArcFace) — the clusters organize by gender and age.** Clustering the **ArcFace**
-embedding with KMeans (k = 6) yields:
+**Findings — the clusters organize by gender and age.** Characterizing the **ArcFace** clusters
+(KMeans, k = 6) — *DINOv2 has no attribute outputs, so it isn't profiled per-cluster; its metrics
+are in the summary table below* — yields:
 
 | Cluster | size | mean age | dominant gender | purity |
 |---------|------|----------|-----------------|--------|
@@ -269,15 +271,21 @@ embedding with KMeans (k = 6) yields:
 | 4 |  53 | 19 | F | 58% (youngest) |
 | 5 |  58 | 57 | M | 55% (oldest) |
 
-Two clusters are perfectly gender-pure (0 = women, 1 = men), and the remaining clusters
-stratify by age (cluster 4 ≈ teens/young adults, cluster 5 ≈ older adults). Quantitatively,
-the clustering agrees strongly with predicted gender and moderately with age:
+Two clusters are perfectly gender-pure (0 = women, 1 = men), and the rest stratify by age
+(cluster 4 ≈ teens/young adults, cluster 5 ≈ older adults).
 
-| Algorithm     | k | silhouette | gender purity | gender NMI | age purity |
-|---------------|---|------------|---------------|------------|------------|
-| **KMeans**    | 6 | 0.045      | **0.808**     | 0.270      | 0.602      |
-| Agglomerative | 2 | 0.033      | 0.724         | 0.258      | 0.430      |
-| HDBSCAN       | 0 | —          | —             | —          | —          |
+**Bottom line across all Part B experiments** (the markdown of `part_b_summary.png`; best gender
+purity in bold — note **DINOv2** wins it):
+
+| experiment | k | silhouette ↑ | gender purity ↑ | gender NMI ↑ | age purity ↑ |
+|---|---|---|---|---|---|
+| arcface · KMeans (attribute-k) | 3 | 0.044 | 0.864 | 0.398 | 0.546 |
+| arcface · KMeans (silhouette-k) | 6 | 0.045 | 0.808 | 0.270 | **0.602** |
+| arcface · HDBSCAN | 0 | — | 0.564 | 0.000 | 0.418 |
+| **dinov2 · KMeans** | 3 | **0.195** | **0.896** | **0.488** | 0.546 |
+
+So every partition is highly gender-pure, **DINOv2 separates gender best** (and is more
+geometrically separated), ArcFace edges age, and HDBSCAN finds no dense clusters (k=0).
 
 Observations:
 - **Gender is the dominant axis** of the ArcFace embedding (purity 0.81, NMI 0.27); age is a
