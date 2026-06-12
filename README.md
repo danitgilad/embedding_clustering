@@ -369,16 +369,13 @@ encoders were run as comparisons:
   Point-MAE FPS starts from a fixed point.
 - **Config:** one YAML, typed dataclasses, no hardcoded paths; CLI `--set` overrides.
 - **Logging:** central config, no bare `print()` for operational output.
-- **Testing:** `pytest` covers the deterministic logic (mesh IO, embedding store + alignment
-  guard, clustering k-recovery, metrics, face-generation dedup/retry with mocked network).
-  Real-model runs are marked `@slow` and excluded from the default suite:
+- **Testing:** the default `pytest` runs a **fast suite** that checks the pipeline *logic* on
+  small synthetic/mocked inputs (mesh IO, embedding cache + alignment guard, clustering
+  k-recovery, metrics, figure/viewer building, face-download dedup/retry with a mocked network) —
+  it never loads the heavy pretrained weights, so it's quick and needs no GPU/network. The few
+  tests that actually run the real models on a real input are marked `@slow`:
   ```bash
-  pytest            # fast suite (no GPU/network)
-  pytest -m slow    # real DINOv2 / Point-MAE / InsightFace (needs weights)
+  pytest            # fast logic suite (no model weights, GPU, or network)
+  pytest -m slow    # also exercise the real DINOv2 / Point-MAE / InsightFace (downloads weights)
   ```
-
-## Deliverables
-
-- Structured Python project (not notebooks); `requirements.txt`; this README.
-- Result visualizations saved as image files under `reports/`.
-- The `assets/` folder is intentionally git-ignored (not part of the submission).
+  The pipeline itself (`main.py`) always uses the real models — the split only concerns tests.
