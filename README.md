@@ -132,10 +132,8 @@ python main.py part-b viewer   # -> outputs/part_b/viewer.html
 ```
 
 Committed copies: **[`reports/part_a/viewer.html`](reports/part_a/viewer.html)** and
-**[`reports/part_b/viewer.html`](reports/part_b/viewer.html)**. Each has a **button per encoder**, a
-clustering-quality table (best cell highlighted), and a **feature-distance histogram that switches
-with the encoder** beside the scatter. It's decoupled from encoding (reads the cached `*.npy` and
-recomputes UMAP + clusters), so it rebuilds instantly.
+**[`reports/part_b/viewer.html`](reports/part_b/viewer.html)** — a button per encoder plus a
+switchable feature-distance histogram beside the scatter.
 
 - **Part A** — each point is a glasses asset as a **rendered thumbnail on a cluster-coloured card**
   (hover for the id); side histogram = intra- vs inter-cluster distances.
