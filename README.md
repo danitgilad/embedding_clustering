@@ -365,17 +365,6 @@ encoders were run as comparisons:
 
 ## Reproducibility & engineering
 
-- **Determinism:** global seeding (numpy / torch / sklearn `random_state` / UMAP seed);
-  Point-MAE FPS starts from a fixed point.
-- **Config:** one YAML, typed dataclasses, no hardcoded paths; CLI `--set` overrides.
-- **Logging:** central config, no bare `print()` for operational output.
-- **Testing:** the default `pytest` runs a **fast suite** that checks the pipeline *logic* on
-  small synthetic/mocked inputs (mesh IO, embedding cache + alignment guard, clustering
-  k-recovery, metrics, figure/viewer building, face-download dedup/retry with a mocked network) —
-  it never loads the heavy pretrained weights, so it's quick and needs no GPU/network. The few
-  tests that actually run the real models on a real input are marked `@slow`:
-  ```bash
-  pytest            # fast logic suite (no model weights, GPU, or network)
-  pytest -m slow    # also exercise the real DINOv2 / Point-MAE / InsightFace (downloads weights)
-  ```
-  The pipeline itself (`main.py`) always uses the real models — the split only concerns tests.
+**Testing:** `pytest` runs a fast, hermetic suite over the pipeline logic (synthetic/mocked
+inputs — no model weights, GPU, or network); `pytest -m slow` additionally runs the real
+DINOv2 / Point-MAE / InsightFace. The pipeline (`main.py`) itself always uses the real models.
