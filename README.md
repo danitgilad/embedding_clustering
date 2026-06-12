@@ -115,12 +115,8 @@ python main.py part-b all
 python main.py --log-level DEBUG --set part_b.n_images=200 part-b all
 ```
 
-Outputs land under `outputs/<part>/`: cached embeddings (`<encoder>.npy` + `ids.json`),
-figures (`figures/*.png`), and `<encoder>_results.json` (metrics + per-cluster profiles).
-**`outputs/` (and `data/`) are git-ignored** — they're generated when you run a stage, so a
-fresh checkout has them empty. Our runs were executed on a remote CPU box, and the result
-files this README references were copied into the committed **`reports/`** folder (the only
-result artifacts in git).
+Each run writes to `outputs/<part>/` (cached `*.npy`, `*_results.json`, figures); **`outputs/` and
+`data/` are git-ignored** and regenerated on demand. The committed result figures live in **`reports/`**.
 
 Configuration lives entirely in `config/default.yaml` and is loaded into typed dataclasses;
 any value can be overridden from the CLI with `--set dotted.key=value`.
