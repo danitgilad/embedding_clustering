@@ -64,6 +64,8 @@ recover — what *attribute* structure do the embeddings hold?
 **age**; the space is continuous (so partitional methods impose soft, useful boundaries).
 Finer splits also surface attributes we never labelled (e.g. an **eyewear** cluster) — the
 metrics only score the labelled axes, not everything the embedding encodes.
+`part_b_summary.png` puts the whole comparison (every encoder × k-selection + HDBSCAN) and this
+bottom line in one figure; `<encoder>_algorithms.png` compares the three algorithms on the shared UMAP.
 
 ---
 

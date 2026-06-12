@@ -124,11 +124,12 @@ def _run_part_b(cfg, stage: str) -> None:
             log.info("Part B %s: %s", ext.name,
                      {k: v for k, v in res.items() if not k.endswith("__profile")})
     if stage in ("viewer", "all"):
-        from src.part_b.viewer import (build_part_b_feature_distribution,
-                                       build_part_b_overview, build_part_b_viewer)
+        from src.part_b.viewer import (build_part_b_feature_distribution, build_part_b_overview,
+                                       build_part_b_summary, build_part_b_viewer)
         build_part_b_viewer(cfg, out, data_dir)
         if (out / "arcface_attributes.json").exists():
             build_part_b_feature_distribution(cfg, out)
+            build_part_b_summary(cfg, out)
         for enc in cfg.part_b.encoders:
             if not (out / f"{enc}.npy").exists():
                 continue

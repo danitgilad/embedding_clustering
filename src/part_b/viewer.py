@@ -214,6 +214,75 @@ def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
     return out_path
 
 
+def build_part_b_summary(cfg: Config, out_dir: str | Path, out_path: str | Path | None = None) -> Path:
+    """The Part B bottom-line figure: a table comparing every clustering experiment (encoder ×
+    k-selection, plus HDBSCAN) on the key metrics, with short conclusions beneath — so the
+    takeaway across all the Part B experiments is readable in one place."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    out_dir = Path(out_dir)
+    raw = json.loads((out_dir / "arcface_attributes.json").read_text())
+    kmin, kmax = cfg.part_b.clustering.k_min, cfg.part_b.clustering.k_max
+    rows = []  # (label, k, silhouette, gender_purity, gender_nmi, age_purity, age_nmi)
+    for enc in cfg.part_b.encoders:
+        if not (out_dir / f"{enc}.npy").exists():
+            continue
+        emb = load_embeddings(enc, out_dir)
+        X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
+        gender = np.array([raw.get(i, {}).get("gender", "?") for i in emb.ids])
+        age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in emb.ids])
+        has_attr = (out_dir / f"{enc}_attributes.json").exists()
+        configs = ([(f"{enc} · KMeans (attribute-k)", "kmeans", attribute_score_fn(gender, age)),
+                    (f"{enc} · KMeans (silhouette-k)", "kmeans", None),
+                    (f"{enc} · HDBSCAN", "hdbscan", None)] if has_attr
+                   else [(f"{enc} · KMeans (silhouette-k)", "kmeans", None)])
+        for label, alg, sfn in configs:
+            res = cluster(X, alg, kmin, kmax, cfg.seed, score_fn=sfn)
+            sil = M.internal_metrics(X, res.labels)["silhouette"]
+            eg, ea = M.external_metrics(res.labels, gender), M.external_metrics(res.labels, age)
+            rows.append((label, res.n_clusters, sil, eg["purity"], eg["nmi"], ea["purity"], ea["nmi"]))
+
+    fig = plt.figure(figsize=(14.5, 2.2 + 0.5 * len(rows) + 3.2), dpi=130)
+    gs = fig.add_gridspec(2, 1, height_ratios=[len(rows) + 1.2, 5.2], top=0.9, bottom=0.04, hspace=0.12)
+    tax = fig.add_subplot(gs[0]); tax.axis("off")
+    cols = ["experiment", "k", "silhouette ↑", "gender purity ↑", "gender NMI ↑",
+            "age purity ↑", "age NMI ↑"]
+    fmt = lambda v: "—" if not np.isfinite(v) else f"{v:.3f}"
+    body = [[r[0], str(r[1]), fmt(r[2]), fmt(r[3]), fmt(r[4]), fmt(r[5]), fmt(r[6])] for r in rows]
+    t = tax.table(cellText=body, colLabels=cols, loc="center", cellLoc="center",
+                  colWidths=[0.34, 0.05, 0.13, 0.14, 0.12, 0.11, 0.11])
+    t.auto_set_font_size(False); t.set_fontsize(10.5); t.scale(1, 1.7)
+    for r_i in range(len(rows) + 1):          # left-align the experiment column
+        t[r_i, 0].set_text_props(ha="left"); t[r_i, 0].PAD = 0.03
+    gp = [r[3] for r in rows]
+    t[max(range(len(gp)), key=lambda i: gp[i]) + 1, 3].set_text_props(fontweight="bold")  # best gender purity
+
+    lo, hi = min(gp), max(gp)
+    concl = (
+        "Bottom line — what these experiments show:\n"
+        f"  •  Gender is the dominant structure: every partition is highly gender-pure ({lo:.2f}–{hi:.2f}).\n"
+        "  •  A generic DINOv2 backbone separates gender as well as / better than face-specialised\n"
+        "      ArcFace — face specialisation isn't needed for coarse-attribute grouping.\n"
+        "  •  Age is a weaker, secondary axis (purity ~0.5–0.6).\n"
+        "  •  HDBSCAN finds no dense clusters (k = 0) → the embedding is a CONTINUOUS attribute\n"
+        "      manifold, not discrete groups; the low silhouettes are expected, not a failure.\n"
+        "  •  ArcFace earns its place via the per-face age/gender/pose it predicts (our validation\n"
+        "      labels), not via better clustering."
+    )
+    cax = fig.add_subplot(gs[1]); cax.axis("off")
+    cax.text(0.0, 1.0, concl, transform=cax.transAxes, ha="left", va="top", fontsize=11.5,
+             color="#222", family="DejaVu Sans")
+    fig.suptitle("Part B — bottom line: clustering experiments compared", fontsize=17,
+                 fontweight="bold", y=0.97)
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "part_b_summary.png"
+    ensure_dir(out_path.parent)
+    fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
+    log.info("Wrote %s", out_path)
+    return out_path
+
+
 def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Path,
                           encoder: str = "arcface", out_path: str | Path | None = None,
                           n_faces: int = 110, k_selection: str | None = None) -> Path:
@@ -306,15 +375,14 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
              "continuous manifold.", transform=tax.transAxes, ha="center", va="top",
              fontsize=8.5, color="#555")
 
-    sel_label = ("attribute-driven k-selection (maximise gender+age AMI)" if score_fn is not None
+    sel_label = ("attribute-driven k-selection (max gender+age AMI)" if score_fn is not None
                  else "silhouette k-selection (geometric separation)")
-    fig.suptitle(f"Part B — {encoder} · {sel_label} → k={k_found}   "
-                 "(same UMAP recoloured by cluster / gender / age)", fontsize=14, y=0.975)
-    fig.text(0.5, 0.945,
-             "Same UMAP layout recoloured three ways. Predicted gender/age are InsightFace model "
-             "outputs (not axes) — colouring the fixed layout by them shows the embedding separates "
-             "by gender (and age). Top = points only; bottom = a dense face sample.",
-             ha="center", va="top", fontsize=9, style="italic", color="#333")
+    fig.suptitle(f"Part B — {encoder} · {sel_label} → k = {k_found}",
+                 fontsize=20, fontweight="bold", y=0.99)
+    fig.text(0.5, 0.957,
+             "the same UMAP layout recoloured three ways (cluster / gender / age) — predicted "
+             "gender & age are InsightFace outputs, not axes; top row = points only, bottom = a "
+             "dense face sample.", ha="center", va="top", fontsize=11, style="italic", color="#444")
     # Filename encodes BOTH k and the k-selection so the variants are unmistakable, e.g.
     # part_b_overview_arcface_k_3_attribute.png vs part_b_overview_arcface_k_6_silhouette.png.
     name = f"part_b_overview_{encoder}_k_{k_found}_{sel_used}.png"

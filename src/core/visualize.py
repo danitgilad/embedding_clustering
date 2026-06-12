@@ -205,13 +205,15 @@ def cluster_montage(image_paths: Sequence[str | Path], labels: np.ndarray,
 
     nrows = len(clusters)
     fig_h = nrows * (thumb_px / 70) + (nrows * 0.28 + 0.8 if summary else 0.6)
-    fig = plt.figure(figsize=(ncols * (thumb_px / 78), fig_h), dpi=120)
+    # minimum width so the title isn't crammed edge-to-edge on narrow (few-column) montages
+    fig = plt.figure(figsize=(max(7.0, ncols * (thumb_px / 78)), fig_h), dpi=120)
     if summary:
-        outer = fig.add_gridspec(2, 1, height_ratios=[nrows, max(1.0, nrows * 0.42)], hspace=0.18)
+        outer = fig.add_gridspec(2, 1, height_ratios=[nrows, max(1.0, nrows * 0.42)],
+                                 hspace=0.18, top=0.94, bottom=0.04)
         grid = outer[0].subgridspec(nrows, ncols, wspace=0.05, hspace=0.32)
         table_ax = fig.add_subplot(outer[1]); table_ax.axis("off")
     else:
-        grid = fig.add_gridspec(nrows, ncols, wspace=0.05, hspace=0.32)
+        grid = fig.add_gridspec(nrows, ncols, wspace=0.05, hspace=0.32, top=0.94, bottom=0.04)
         table_ax = None
 
     for r, c_lab in enumerate(clusters):
@@ -241,7 +243,12 @@ def cluster_montage(image_paths: Sequence[str | Path], labels: np.ndarray,
                            colWidths=[0.08, 0.08, 0.84])
         t.auto_set_font_size(False); t.set_fontsize(7.5); t.scale(1, 1.3)
 
-    fig.suptitle("Per-cluster sample thumbnails" + (f" — {caption}" if caption else ""),
-                 fontsize=11)
+    # caption is the title (Part A passes a 2-line "encoder · KMeans (k=..)\nmetrics"); render it
+    # large with the first line bold so it stays legible even on narrow montages.
+    lines = (caption or "Per-cluster sample thumbnails").split("\n")
+    fig.suptitle(lines[0], fontsize=15, fontweight="bold", y=0.995)
+    if len(lines) > 1:
+        fig.text(0.5, 0.965, " · ".join(lines[1:]) if len(lines) > 2 else lines[1],
+                 ha="center", va="top", fontsize=11, color="#333")
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
     return out_path

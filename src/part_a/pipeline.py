@@ -84,7 +84,7 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
             cluster_montage([p for p, _, _ in sel], [lab for _, lab, _ in sel],
                             fig_dir / f"{extractor.name}_clusters_montage.png",
                             ids=[i for _, _, i in sel], crop=True, summary=True,
-                            caption=(f"{extractor.name} · KMeans k={km['n_clusters']} · "
+                            caption=(f"{extractor.name} · KMeans (k={km['n_clusters']})\n"
                                      f"silhouette={km['silhouette']:.3f} · "
                                      f"DB={km['davies_bouldin']:.2f} · CH={km['calinski_harabasz']:.2f}"))
     write_json(results, out / f"{extractor.name}_results.json")
