@@ -306,7 +306,7 @@ KMeans this collapses to **k=3** (women / men / a young cohort) with **gender pu
 — a more gender-meaningful partition (now the default; silhouette is one flag away).
 
 **Figures** (`reports/part_b/`):
-- **[`part_b_summary.png`](reports/part_b/part_b_summary.png)** *(start here)* — the bottom-line table
+- **[`part_b_summary.png`](reports/part_b/part_b_summary.png)**  — the bottom-line table
   comparing every experiment (encoder × k-selection + HDBSCAN) on the key metrics, conclusions beneath.
 - **[`part_b_overview_arcface_k_3_attribute.png`](reports/part_b/part_b_overview_arcface_k_3_attribute.png)**
   — ArcFace UMAP (default attribute-k=3) recoloured by cluster / gender / age in two rows (points,
