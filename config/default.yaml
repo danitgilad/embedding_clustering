@@ -42,8 +42,8 @@ part_b:
   tpdne_url: https://thispersondoesnotexist.com/
   request_delay_s: 1.0
   max_retries: 5
-  encoders: [arcface, dinov2_generic]
-  dinov2_generic:
+  encoders: [arcface, dinov2]   # dinov2 = same model as Part A, on faces (a general, non-face-specific control)
+  dinov2:
     hf_model: facebook/dinov2-base
   insightface:
     model_name: buffalo_l

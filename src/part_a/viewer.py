@@ -158,9 +158,9 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
                          sorted(gaps.items(), key=lambda kv: kv[1], reverse=True))
     n_assets = len(items[0]["X"])
     n_pairs = n_assets * (n_assets - 1) // 2
-    fig.suptitle(f"Part A — feature-distribution & discriminability analysis   "
-                 f"(each encoder's {n_assets} GLB embeddings → {n_pairs} pairwise distances)",
-                 fontsize=13, y=0.99)
+    fig.suptitle(f"Part A — how discriminative is each feature? Pairwise cosine distances between "
+                 f"the {n_assets} GLB embeddings ({n_pairs} pairs/encoder), split intra- vs "
+                 f"inter-cluster", fontsize=13, y=0.99)
     fig.text(0.5, 0.005,
              "How to read — LEFT: the spread of all pairwise distances in the embedding (a left "
              "tail near 0 = near-duplicate assets). RIGHT: those same distances split by whether "
@@ -173,7 +173,7 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
              "differently-sized groups comparable in shape.)",
              ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
     fig.tight_layout(rect=(0, 0.045, 1, 0.965))
-    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distances_by_cluster.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)

@@ -52,7 +52,7 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
         X = preprocess(emb.vectors, list(cfg.reduce.preprocess), pca_components=cfg.reduce.pca_components)
         coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
         # feature-distance histograms for this encoder (independent of k-selection): split by
-        # gender, then by age bucket — same two attributes as feature_distributions.png
+        # gender, then by age bucket — same two attributes as feature_distances_by_attribute.png
         enc_hist = None
         if gender_by_id:
             g = np.array([gender_by_id.get(i, "?") for i in emb.ids])
@@ -113,7 +113,8 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
         intro=("Each point is one generated face, coloured by its KMeans cluster. Hover a "
                "point to see the face plus predicted age / gender / pose. Buttons switch the "
                "view: ArcFace under both k-selections (attribute k=3 vs silhouette k=6) and "
-               "the generic-DINOv2 encoder — toggle to compare the clusterings on one layout. "
+               "DINOv2 — the same general image model as Part A, applied to the faces as a control "
+               "against the face-specialised ArcFace — toggle to compare the clusterings on one layout. "
                "Two feature-distance histograms beside the scatter (same vs different gender, "
                "and same vs different age bucket) switch with the encoder — a wider gap between "
                "the dashed means = the embedding separates that attribute more. (y-axis = "
@@ -155,7 +156,7 @@ def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
     """Per encoder: pairwise cosine-distance distribution split by ATTRIBUTE (same vs different
     gender, and same vs different age bucket). Δmean = mean(different) − mean(same) is a
     label-free read on whether the embedding encodes that attribute — positive ⇒ same-attribute
-    faces sit closer. The Part B analogue of Part A's feature_distributions, but split by the
+    faces sit closer. The Part B analogue of Part A's by-cluster figure, but split by the
     attributes we care about (the manifold is continuous, so a cluster split would just restate
     the low silhouette)."""
     import matplotlib
@@ -194,8 +195,10 @@ def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
         summary[enc] = (_split(row[1], d, gender[iu[0]] == gender[iu[1]], "gender"),
                         _split(row[2], d, age[iu[0]] == age[iu[1]], "age bucket"))
 
-    rank = " · ".join(f"{e}: gender Δ={g:.2f}, age Δ={a:.2f}" for e, (g, a) in summary.items())
-    fig.suptitle("Part B — feature-distribution by attribute (does the embedding encode gender / age?)",
+    rank = " · ".join(f"{e}: gender Δ={g:.2f}, age Δ={a:.2f}"
+                      for e, (g, a) in summary.items())
+    fig.suptitle("Part B — does the embedding encode gender / age? Pairwise face-embedding distances, "
+                 "split same- vs different-attribute",
                  fontsize=14, y=0.99)
     fig.text(0.5, 0.005,
              "All pairwise cosine distances per encoder, split by whether the two faces share a "
@@ -207,7 +210,7 @@ def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
              "fraction of pairs per unit distance), so the two groups are comparable in shape.",
              ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
     fig.tight_layout(rect=(0, 0.05, 1, 0.96))
-    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
+    out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distances_by_attribute.png"
     ensure_dir(out_path.parent)
     fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
     log.info("Wrote %s", out_path)
@@ -234,10 +237,11 @@ def build_part_b_summary(cfg: Config, out_dir: str | Path, out_path: str | Path 
         gender = np.array([raw.get(i, {}).get("gender", "?") for i in emb.ids])
         age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in emb.ids])
         has_attr = (out_dir / f"{enc}_attributes.json").exists()
-        configs = ([(f"{enc} · KMeans (attribute-k)", "kmeans", attribute_score_fn(gender, age)),
-                    (f"{enc} · KMeans (silhouette-k)", "kmeans", None),
-                    (f"{enc} · HDBSCAN", "hdbscan", None)] if has_attr
-                   else [(f"{enc} · KMeans (silhouette-k)", "kmeans", None)])
+        dn = enc
+        configs = ([(f"{dn} · KMeans (attribute-k)", "kmeans", attribute_score_fn(gender, age)),
+                    (f"{dn} · KMeans (silhouette-k)", "kmeans", None),
+                    (f"{dn} · HDBSCAN", "hdbscan", None)] if has_attr
+                   else [(f"{dn} · KMeans (silhouette-k)", "kmeans", None)])
         for label, alg, sfn in configs:
             res = cluster(X, alg, kmin, kmax, cfg.seed, score_fn=sfn)
             sil = M.internal_metrics(X, res.labels)["silhouette"]
@@ -263,7 +267,7 @@ def build_part_b_summary(cfg: Config, out_dir: str | Path, out_path: str | Path 
     concl = (
         "Bottom line — what these experiments show:\n"
         f"  •  Gender is the dominant structure: every partition is highly gender-pure ({lo:.2f}–{hi:.2f}).\n"
-        "  •  A generic DINOv2 backbone separates gender as well as / better than face-specialised\n"
+        "  •  Plain DINOv2 separates gender as well as / better than the face-specialised\n"
         "      ArcFace — face specialisation isn't needed for coarse-attribute grouping.\n"
         "  •  Age is a weaker, secondary axis (purity ~0.5–0.6).\n"
         "  •  HDBSCAN finds no dense clusters (k = 0) → the embedding is a CONTINUOUS attribute\n"
@@ -307,7 +311,7 @@ def build_part_b_overview(cfg: Config, out_dir: str | Path, faces_dir: str | Pat
     um = cfg.reduce.umap
     coords = umap_2d(X, um.n_neighbors, um.min_dist, um.metric, cfg.seed)
     # gender/age are InsightFace predictions (canonical face attributes), keyed by face id —
-    # so they apply to ANY encoder's layout, including the generic-DINOv2 ablation.
+    # so they apply to ANY encoder's layout, including the DINOv2 run.
     raw = json.loads((out_dir / "arcface_attributes.json").read_text())
     gender = np.array([raw.get(i, {}).get("gender", "?") for i in ids])
     age = np.array([_age_bucket(raw.get(i, {}).get("age", 0.0)) for i in ids])

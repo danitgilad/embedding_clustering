@@ -1,6 +1,6 @@
 This is a senior task
-submitted by Danit Gilad
-June 2026
+submitted by Danit Gilad,
+June 2026,
 https://github.com/danitgilad/embedding_clustering
 
 
@@ -12,12 +12,12 @@ Two independent unsupervised-learning pipelines over different data modalities:
   derived from rendered images** (DINOv2, CLIP) against a **3D feature derived directly from
   the mesh** (Point-MAE).
 - **Part B** — generate a dataset of AI faces, embed them with a pretrained face model
-  (InsightFace / ArcFace, plus a generic-DINOv2 ablation), then **discover and characterize**
-  the natural attribute groupings (gender, age, …).
+  (InsightFace / ArcFace), then **discover and characterize** the natural attribute groupings
+  (gender, age, …). We also run **DINOv2** on the faces as a baseline.
 
 Both parts are built on one pipeline — `extract → reduce → cluster → evaluate → visualize`.
 Within each part we compare several encoders (Part A: DINOv2 / CLIP / Point-MAE; Part B:
-ArcFace / generic-DINOv2). Because every encoder feeds the **identical** downstream — same
+ArcFace / DINOv2). Because every encoder feeds the **identical** downstream — same
 preprocessing, UMAP, clustering algorithm + k-selection, and metrics — the *only* variable is
 the extractor, so any difference in cluster quality is attributable to the embedding itself.
 That controlled setup is what makes the **encoder-vs-encoder comparison within a part** fair.
@@ -63,7 +63,7 @@ just additionally does attribute characterization + pseudo-label validation that
 │   ├── part_b/              # faces
 │   │   ├── generate.py      # rate-limited TPDNE download + hash-dedup
 │   │   ├── extractors/arcface.py       # InsightFace -> 512-d embedding + age/gender/pose
-│   │   ├── extractors/dinov2_generic.py  # DINOv2 on faces (generic-backbone ablation)
+│   │   ├── extractors/dinov2.py          # DINOv2 on the face crops (Part B baseline)
 │   │   ├── viewer.py                   # build the Part B interactive HTML
 │   │   └── pipeline.py
 │   └── utils/               # seeding, io helpers
@@ -107,7 +107,7 @@ python main.py part-a render
 python main.py part-a extract
 python main.py part-a cluster
 
-# Part B (faces): generate -> extract (ArcFace + generic-DINOv2) -> cluster -> characterize -> visualize
+# Part B (faces): generate -> extract (ArcFace + DINOv2) -> cluster -> characterize -> visualize
 python main.py part-b generate --n 500
 python main.py part-b all
 
@@ -136,22 +136,18 @@ python main.py part-b viewer   # -> outputs/part_b/viewer.html
 ```
 
 Committed copies: **[`reports/part_a/viewer.html`](reports/part_a/viewer.html)** and
-**[`reports/part_b/viewer.html`](reports/part_b/viewer.html)**. Each has a **button per
-encoder** (toggle the feature/model), a **per-encoder clustering-quality table** (best cell
-highlighted), and — beside the scatter — a **feature-distance histogram that switches with the
-selected encoder**. It's decoupled from encoding — the stage reads the cached `*.npy`, recomputes
-UMAP + clusters deterministically, and renders — so the HTML can be rebuilt/restyled instantly.
+**[`reports/part_b/viewer.html`](reports/part_b/viewer.html)**. Each has a **button per encoder**, a
+clustering-quality table (best cell highlighted), and a **feature-distance histogram that switches
+with the encoder** beside the scatter. It's decoupled from encoding (reads the cached `*.npy` and
+recomputes UMAP + clusters), so it rebuilds instantly.
 
-- **Part A** — each point is a glasses asset shown as its **rendered thumbnail on a
-  cluster-coloured card** (umap_viewer style); hover shows the id. The side histogram is the
-  **intra- vs inter-cluster** distance distribution (Δmean per encoder).
-- **Part B** — a UMAP scatter coloured by cluster; **hover any point to see that face** plus
-  its predicted **age / gender / pose** and cluster (face thumbnails are 96 px JPEGs). Two side
-  histograms show the **same- vs different-gender** and **same- vs different-age** distance
-  distributions (Δmean per encoder), mirroring `feature_distributions.png`.
+- **Part A** — each point is a glasses asset as a **rendered thumbnail on a cluster-coloured card**
+  (hover for the id); side histogram = intra- vs inter-cluster distances.
+- **Part B** — UMAP coloured by cluster; **hover any point to see the face** + predicted
+  age/gender/pose; two side histograms = same- vs different- gender / age distances.
 
-Static PNGs (overview figures, **annotated per-cluster montages**, and — for Part B — a combined
-algorithm-comparison figure) are also written under `reports/` for quick at-a-glance review.
+(Static PNGs — overviews, per-cluster montages, and Part B's algorithm-comparison figure — are also
+under `reports/`.)
 
 ---
 
@@ -196,61 +192,39 @@ feature separates the glasses most cleanly**:
 | Point-MAE (3D mesh)     | 7 | 0.407        | 1.008            | 3.002               |
 | CLIP (2D render)        | 3 | 0.358        | 1.382            | 3.560               |
 
-**Is the different k fair?** Yes. *k* is chosen **per encoder by the same rule** — the silhouette
-sweep over k∈[2,8]. DINOv2/Point-MAE peak at **k=7**, CLIP at **k=3**; that difference is *itself a
-result*, not a confound — CLIP's coarser, language-aligned embedding can't support finer splits. To
-rule out *k* as the cause, we also compare all three at a **fixed k=6**, and the ranking is
-unchanged: **DINOv2 0.471 > Point-MAE 0.404 > CLIP 0.302**. The cross-encoder comparison table in
-`part_a_overview.png` shows both the per-encoder k\* metrics and this fixed-k column.
+**Is the different k fair?** Yes — *k* is chosen per encoder by the **same** silhouette sweep over
+k∈[2,8]. DINOv2/Point-MAE peak at k=7, CLIP at k=3; that difference is *itself a result* (CLIP's
+coarser, language-aligned embedding can't support finer splits), not a confound. At a **fixed k=6**
+the ranking is unchanged — **DINOv2 0.471 > Point-MAE 0.404 > CLIP 0.302** (see the comparison table
+in `part_a_overview.png`).
 
-Interpretation: the 2D features (DINOv2, CLIP) embed **greyscale** renders, so they capture
-the glasses' **form and silhouette as projected to 2D** (rim shape, lens curvature, frame
-proportions revealed by shading) — *not* colour or material. Point-MAE captures the **raw 3D
-geometry** of the surface points. So this is really a **shape-from-2D-render vs
-shape-from-3D-points** comparison, and **colour/texture is not a factor for any encoder** (see
-the note below). DINOv2's fine-grained 2D features resolve the form best; **CLIP — also a 2D
-render feature — separates *worse*** (and collapses to k=3): its language-aligned embedding is
-coarser/semantic ("a pair of glasses") and under-resolves these similar products. Point-MAE's
-point geometry lands in between. **n = 14 is small, so these numbers are illustrative.**
+**Interpretation:** this is really **shape-from-2D-render vs shape-from-3D-points** — colour/texture
+isn't a factor (see the note). DINOv2's fine-grained 2D features resolve the form best; **CLIP — also
+2D — separates *worst*** (its language-aligned embedding is coarser and under-resolves these similar
+products); Point-MAE's point geometry lands in between. **n = 14 → illustrative, not absolute.**
 
-**Feature-distribution cross-check.** To confirm the ranking isn't an artifact of one clustering,
-[`feature_distributions.png`](reports/part_a/feature_distributions.png) measures discriminability *straight from the embeddings*: for each
-encoder we take **its 14 GLB embedding vectors** and compute all **C(14,2)=91 pairwise cosine
-distances**, splitting them into *intra-cluster* vs
-*inter-cluster*; the gap between their means (**Δmean = mean_inter − mean_intra**) says how
-cleanly same-cluster items sit closer than different-cluster items. The ordering is **identical to
-silhouette — DINOv2 0.69 > Point-MAE 0.53 > CLIP 0.38** — and the histograms make CLIP's weakness
-visible: its intra- and inter-cluster distances **overlap heavily** (little geometric structure to
-cluster), whereas DINOv2's barely touch. An independent, *k*-agnostic view agreeing with silhouette
-is good evidence the DINOv2 > Point-MAE > CLIP result is real. (The left-hand histograms also show a
-small near-zero tail = the near-duplicate left/right frame variants.)
+**Feature-distribution cross-check.** [`feature_distances_by_cluster.png`](reports/part_a/feature_distances_by_cluster.png)
+checks the ranking *straight from the embeddings*: per encoder, the C(14,2)=91 pairwise cosine
+distances split into intra- vs inter-cluster, gap **Δmean = mean_inter − mean_intra**. The order
+matches silhouette — **DINOv2 0.69 > Point-MAE 0.53 > CLIP 0.38** — and CLIP's intra/inter histograms
+overlap heavily (DINOv2's barely touch), so an independent, *k*-agnostic view confirms the result.
 
-> **Note — colour and texture are intentionally NOT used.** The renders fed to DINOv2/CLIP are
-> **greyscale** (form + shading only) and Point-MAE consumes **xyz surface points** — so all
-> three encoders cluster by **shape/geometry, never colour or material**. The *coloured*
-> glasses you see in the viewer and `part_a_overview.png` are rendered that way **for human
-> inspection only**; the algorithms never see them. Trade-off: for true *appearance* similarity
-> colour would matter (a black vs a red copy of the same frame look different but would embed
-> almost identically here) — feeding texture-coloured renders into the 2D encoders would be a
-> natural extension.
+> **Note — colour & texture are intentionally NOT used.** DINOv2/CLIP embed **greyscale** renders
+> and Point-MAE uses **xyz points**, so all three cluster by **shape only**. The coloured glasses in
+> the viewer/overview are for human inspection; the algorithms never see them. *(Trade-off: for true
+> appearance similarity colour would matter — a natural extension.)*
 
-**Figures** (`reports/part_a/`): the main one is **[`part_a_overview.png`](reports/part_a/part_a_overview.png)** — a single panel
-per encoder where each glasses **render is placed at its UMAP point**, framed in its
-**cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics — plus a
-**cross-encoder comparison table** (k\*, silhouette, Davies–Bouldin, Calinski–Harabasz,
-and the fixed-k=6 column) and a one-line takeaway. It makes "which glasses landed in which cluster,
-for each feature" inspectable at a glance (CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
-**[`part_a_k6_umap.png`](reports/part_a/part_a_k6_umap.png)** is the visual companion to that fixed-k
-column — every encoder's clustering at the **common k=6** on one UMAP each, so the partitions are
-directly comparable with k held equal.
-**[`feature_distributions.png`](reports/part_a/feature_distributions.png)** is the figure behind
-the *Feature-distribution cross-check* above (pairwise-distance spread + the intra/inter Δmean per
-encoder, with a "how to read" caption). Also written:
-**[`dinov2_clusters_montage.png`](reports/part_a/dinov2_clusters_montage.png)** &c — glasses grouped
-by cluster with coloured cluster headers, GLB ids, a member table, **and the clustering metrics in
-its header**. Part A clusters with **KMeans only**, so there's no standalone metrics table or
-per-algorithm scatter — the overview's comparison table covers that. The interactive
-**[`viewer.html`](reports/part_a/viewer.html)** is the richest view (hover for a large colour render + id).
+**Figures** (`reports/part_a/`):
+- **[`part_a_overview.png`](reports/part_a/part_a_overview.png)** *(main)* — all encoders side-by-side:
+  each glasses render at its UMAP point, cluster-coloured, GLB-id-labelled, plus a cross-encoder
+  metrics table (incl. the fixed-k=6 column) and a one-line takeaway.
+- **[`part_a_k6_umap.png`](reports/part_a/part_a_k6_umap.png)** — every encoder clustered at the
+  common **k=6** (visual companion to the fixed-k column).
+- **[`feature_distances_by_cluster.png`](reports/part_a/feature_distances_by_cluster.png)** — the discriminability
+  cross-check (pairwise-distance spread + intra/inter Δmean, with a "how to read" caption).
+- **`*_clusters_montage.png`** — glasses grouped by cluster, with GLB ids, a member table, and the
+  metrics in the header (Part A clusters with KMeans only, so no standalone metrics/scatter files).
+- **[`viewer.html`](reports/part_a/viewer.html)** — interactive (hover for a large colour render + id).
 
 ---
 
@@ -269,19 +243,22 @@ identity signal to recover — the only structure to find is **attributes**.
 2. **Model — InsightFace `buffalo_l` (ArcFace).** Chosen because it is face-specialized and,
    per face, returns a 512-d ArcFace embedding **plus** predicted age/gender/pose. We cluster
    the embedding and use the attributes as *evidence* to characterize and validate clusters.
-   As an **ablation**, we also embed the same faces with a **generic DINOv2** backbone
-   (`facebook/dinov2-base`) to test whether a face-specialized model clusters faces better
-   than a general one (it has no attributes, so it's clustered by silhouette only).
+   As an **ablation**, we also embed the same faces with **DINOv2** — the *same*
+   `facebook/dinov2-base` from Part A. It's a **generic** model (not face-specific, unlike
+   ArcFace), so it's a baseline for "does a face-specialized model cluster faces better than a
+   general backbone?". The **only difference from Part A's DINOv2 is the input**: face crops here
+   vs glasses renders there. It has no attribute outputs, so it's clustered by silhouette only.
 3. **Cluster** the embeddings identically to Part A (standardize → L2-norm → KMeans /
    Agglomerative / HDBSCAN). For ArcFace, *k* can be chosen by silhouette or by **attribute
    alignment** (see "Choosing k"); clusters are validated against the model's age/gender
    predictions as pseudo-labels (NMI / ARI / purity / AMI).
    > **Caveat — mild circularity:** for ArcFace, the same model supplies *both* the embedding and
    > the gender/age labels we validate it against, so that check is partly self-referential. The
-   > generic-DINOv2 ablation (a different embedding scored against ArcFace's *independent* labels)
+   > DINOv2 ablation (a different embedding scored against ArcFace's *independent* labels)
    > is the cleaner test — and it still groups by gender, which corroborates the finding.
 
-**Findings — the clusters organize by gender and age.** KMeans (k = 6) yields:
+**Findings (ArcFace) — the clusters organize by gender and age.** Clustering the **ArcFace**
+embedding with KMeans (k = 6) yields:
 
 | Cluster | size | mean age | dominant gender | purity |
 |---------|------|----------|-----------------|--------|
@@ -303,66 +280,41 @@ the clustering agrees strongly with predicted gender and moderately with age:
 | HDBSCAN       | 0 | —          | —             | —          | —          |
 
 Observations:
-- **Gender is the dominant axis** of the ArcFace embedding space (purity 0.81, NMI 0.27);
-  age is a secondary, gradual axis.
-- **Clusters also capture attributes we never labelled**: inspecting the viewer, one of the
-  k=6 clusters is visibly **people wearing glasses**. ArcFace encodes eyewear (and likely
-  pose/expression) too — so the finer k=6 split surfaces *real* structure beyond gender/age,
-  which our gender+age pseudo-labels can't reward. A nice reminder that the internal metrics
-  only measure the *labelled* axes, not everything the embedding actually represents.
-- **Low silhouette is expected and informative**: face embeddings lie on a *continuous*
-  manifold (identity/attribute space), not in well-separated blobs — so partitional methods
-  impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** — k=0, every
-  point labelled noise (the HDBSCAN panel of `arcface_algorithms.png`). HDBSCAN is *density-based* (no preset k): it
-  forms a cluster only where a region of ≥`min_cluster_size` points (we use `max(5, N/20)` = **25**
-  for 500 faces) is denser than its surroundings, separated by lower-density gaps. On a continuous
-  manifold no such density-separated island exists, so it returns **k=0 — meaning "no
-  density-separated groups exist,"** a legitimate answer (KMeans/Agglomerative can't give it; they
-  always return the *k* you ask for) and the honest signature of a continuous space, not a bug.
-- **Face-specialized vs generic backbone** (ablation): embedding the same 500 faces with a
-  *generic* DINOv2 gives clusters that are **more separated *and* more gender-aligned** than
-  ArcFace (KMeans silhouette **0.195** vs 0.045; gender purity **0.896** vs 0.808, NMI 0.488 vs
-  0.270) — a general self-supervised backbone already groups faces by gender, no
-  face-specialization required. ArcFace's edge is narrower: it tracks **age** slightly better
-  (purity 0.602 vs 0.546) and, crucially, *returns* the per-face predicted age/gender/pose —
-  the pseudo-labels we use to interpret and validate every clustering (DINOv2 gives none). So
-  the specialization buys the attribute **read-outs**, not better gender grouping. See
-  [`part_b_overview_dinov2_generic_k_3_silhouette.png`](reports/part_b/part_b_overview_dinov2_generic_k_3_silhouette.png);
-  both encoders are toggles in the Part B viewer.
+- **Gender is the dominant axis** of the ArcFace embedding (purity 0.81, NMI 0.27); age is a
+  secondary, gradual axis.
+- **Clusters also capture unlabelled attributes** — one k=6 cluster is visibly *people wearing
+  glasses*, so the finer split surfaces real structure the gender+age pseudo-labels can't reward.
+- **HDBSCAN finds no dense clusters** (k=0, all noise — see `arcface_algorithms.png`): the honest
+  signature of a *continuous* embedding manifold, which is also why the silhouettes are low.
+  (Density mechanics in [`METHODS.md`](METHODS.md).)
+- **Face-specialized vs general backbone:** DINOv2 on the same faces clusters **more gender-aligned**
+  than ArcFace (silhouette 0.195 vs 0.045; gender purity 0.896 vs 0.808) — a general backbone already
+  groups by gender. ArcFace's edge is **age** (0.602 vs 0.546) and that it *returns* the age/gender/
+  pose pseudo-labels we validate against; specialization buys the read-outs, not better gender
+  grouping. (`part_b_overview_dinov2_k_3_silhouette.png`)
 
-**Choosing k — silhouette vs attribute-driven.** The detailed k=6 result above is the
-*silhouette* selection. Because the structure is continuous and what we care about is
-*attributes*, Part B also supports **attribute-driven k-selection** (`clustering.k_selection:
-attribute`): sweep k and pick the k that maximizes **gender + age AMI** (adjusted mutual
-information). On KMeans this collapses to **k=3** (women 97% F · men 86% M · a young cohort)
-with **gender purity 0.864 > 0.808** and gender NMI 0.398 > 0.270 — a *more* gender-meaningful
-partition than silhouette's k=6. (This is now the default; silhouette is one flag away.)
-Agglomerative under AMI still climbs to k_max because its finer splits stay gender-coherent —
-the same continuous-manifold signature HDBSCAN showed.
+**Choosing k — silhouette vs attribute-driven.** The k=6 above is the *silhouette* pick. Since the
+structure is continuous and we care about *attributes*, Part B also offers **attribute-driven**
+k-selection (`clustering.k_selection: attribute`): pick the k maximizing **gender + age AMI**. On
+KMeans this collapses to **k=3** (women / men / a young cohort) with **gender purity 0.864 > 0.808**
+— a more gender-meaningful partition (now the default; silhouette is one flag away).
 
-**Figures** (`reports/part_b/`): start with
-**[`part_b_summary.png`](reports/part_b/part_b_summary.png)** — the **bottom-line** figure: a table
-comparing every experiment (encoder × k-selection, plus HDBSCAN) on the key metrics, with the
-conclusions spelled out beneath. The detailed per-experiment view is
-**[`part_b_overview_arcface_k_3_attribute.png`](reports/part_b/part_b_overview_arcface_k_3_attribute.png)**
-— the ArcFace UMAP under the default **attribute-driven k-selection (k=3)**, shown three ways (by
-**cluster**, **gender**, **age**) in two rows (top = coloured points only; bottom = a dense face
-sample) with a **metrics summary table** beneath (silhouette / Davies–Bouldin / Calinski–Harabasz /
-gender & age purity + NMI). The filename and headline both state the k and selection, so the
-variants are unmistakable:
-**[`part_b_overview_arcface_k_6_silhouette.png`](reports/part_b/part_b_overview_arcface_k_6_silhouette.png)**
-is the **silhouette k-selection (k=6)** partition of the *same* ArcFace embedding, and
-**[`part_b_overview_dinov2_generic_k_3_silhouette.png`](reports/part_b/part_b_overview_dinov2_generic_k_3_silhouette.png)**
-is the generic-backbone ablation.
-**[`feature_distributions.png`](reports/part_b/feature_distributions.png)** analyses each encoder's
-embedding directly — pairwise cosine distances split by **same vs different gender / age** (Δmean =
-how much the embedding separates that attribute; generic-DINOv2 separates gender *more* in raw
-distance, Δ0.15, than ArcFace, Δ0.03). Also: [`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)
-(sample faces per cluster), and **[`arcface_algorithms.png`](reports/part_b/arcface_algorithms.png)**
-— one combined figure with a UMAP per clustering algorithm (KMeans / Agglomerative / HDBSCAN, the
-last showing k=0 all-noise) plus the metrics table beneath.
-Per-cluster profiles in [`arcface_results.json`](reports/part_b/arcface_results.json). (Unlike Part A, the encoders here embed the **colour** face crop —
-colour *is* used.)
+**Figures** (`reports/part_b/`):
+- **[`part_b_summary.png`](reports/part_b/part_b_summary.png)** *(start here)* — the bottom-line table
+  comparing every experiment (encoder × k-selection + HDBSCAN) on the key metrics, conclusions beneath.
+- **[`part_b_overview_arcface_k_3_attribute.png`](reports/part_b/part_b_overview_arcface_k_3_attribute.png)**
+  — ArcFace UMAP (default attribute-k=3) recoloured by cluster / gender / age in two rows (points,
+  then a dense face sample) + a metrics table. Variants name their k & selection:
+  [`..._arcface_k_6_silhouette.png`](reports/part_b/part_b_overview_arcface_k_6_silhouette.png) and
+  [`..._dinov2_k_3_silhouette.png`](reports/part_b/part_b_overview_dinov2_k_3_silhouette.png) (DINOv2 baseline).
+- **[`feature_distances_by_attribute.png`](reports/part_b/feature_distances_by_attribute.png)** — pairwise distances
+  split by same/different gender & age (DINOv2 separates gender more, Δ0.15, than ArcFace, Δ0.03).
+- **[`arcface_algorithms.png`](reports/part_b/arcface_algorithms.png)** — a UMAP per algorithm
+  (KMeans/Agglomerative/HDBSCAN, the last k=0 all-noise) + the metrics table.
+- **[`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)** (sample faces per
+  cluster); per-cluster profiles in [`arcface_results.json`](reports/part_b/arcface_results.json).
+
+(Unlike Part A, the Part B encoders embed the **colour** face crop — colour *is* used.)
 
 ---
 
@@ -374,13 +326,16 @@ encoders were run as comparisons:
 
 | Encoder | Part | Status | Result |
 |---|---|---|---|
-| DINOv2 (render) | A 2D | primary | best — silhouette 0.479 |
+| DINOv2 (on renders) | A 2D | primary | best — silhouette 0.479 |
 | Point-MAE (mesh) | A 3D | primary | 0.407 |
-| **CLIP (render)** | A 2D | **added** | 0.358 — coarser/semantic, weakest here |
+| **CLIP (on renders)** | A 2D | **added** | 0.358 — coarser/semantic, weakest here |
 | ArcFace | B | primary | gender purity 0.81 (attribute-meaningful) |
-| **DINOv2-generic** | B | **added** | more separated *and* more gender-aligned (purity 0.896 > ArcFace 0.808) |
+| **DINOv2 (on faces)** | B | **added** | more separated *and* more gender-aligned (purity 0.896 > ArcFace 0.808) |
 | PE-Core (render) | A 2D | **deferred** | `perception_models` needs Python ≥3.11; box runs 3.10 |
 | OpenShape/ULIP-2 | A 3D | **deferred** | CUDA-coupled PointBERT; Point-MAE already covers learned-3D |
+
+> The two DINOv2 rows are the **same model** (`facebook/dinov2-base`) on different inputs — glasses
+> renders (Part A) vs face crops (Part B).
 
 The two deferred encoders are documented rather than stubbed — each is a one-line re-enable
 (`encoders_2d`/`encoders_3d` in `config/default.yaml`) once its environment constraint is met.

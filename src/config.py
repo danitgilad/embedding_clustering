@@ -93,7 +93,7 @@ class PartBCfg:
     max_retries: int = 5
     encoders: tuple[str, ...] = ("arcface",)
     insightface: InsightFaceCfg = field(default_factory=InsightFaceCfg)
-    dinov2_generic: DinoCfg = field(default_factory=DinoCfg)
+    dinov2: DinoCfg = field(default_factory=DinoCfg)
     clustering: ClusteringCfg = field(
         default_factory=lambda: ClusteringCfg(
             algorithms=("kmeans", "agglomerative", "hdbscan"), k_min=2, k_max=12

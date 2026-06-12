@@ -115,7 +115,7 @@ def make_hist_spec(title: str, xlabel: str, named_arrays, n_bins: int = 30,
 
     named_arrays: list of (name, color, values). Binning here (not client-side) keeps the HTML
     small even for Part B's ~125k pairs. density=True normalises each series so its area = 1
-    (matching the static feature_distributions.png), making two differently-sized groups
+    (matching the static feature-distance figures), making two differently-sized groups
     comparable in shape; density=False shows raw pair counts.
     """
     arrs = [(n, c, np.asarray(v, dtype=float)) for n, c, v in named_arrays]
@@ -140,7 +140,7 @@ def _hist_figure_json(spec: dict) -> str:
     for s in spec["series"]:
         fig.add_trace(go.Bar(x=s["x"], y=s["y"], name=s["name"],
                              marker_color=s["color"], opacity=0.6))
-    # dashed vertical line at each series' mean (matching feature_distributions.png)
+    # dashed vertical line at each series' mean (matching the static feature-distance figures)
     shapes, annos = [], []
     for s in spec["series"]:
         if s.get("mean") is None:

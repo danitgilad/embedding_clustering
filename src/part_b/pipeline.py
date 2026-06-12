@@ -31,9 +31,9 @@ def build_extractors(cfg):
             from src.part_b.extractors.arcface import ArcFaceExtractor
             exts.append(ArcFaceExtractor(cfg.part_b.insightface.model_name,
                                          cfg.part_b.insightface.det_size))
-        elif name == "dinov2_generic":
-            from src.part_b.extractors.dinov2_generic import DINOv2GenericExtractor
-            exts.append(DINOv2GenericExtractor(cfg.part_b.dinov2_generic.hf_model))
+        elif name == "dinov2":
+            from src.part_b.extractors.dinov2 import DINOv2FaceExtractor
+            exts.append(DINOv2FaceExtractor(cfg.part_b.dinov2.hf_model))
         else:
             raise ValueError(f"unknown Part B encoder {name!r}")
     return exts
