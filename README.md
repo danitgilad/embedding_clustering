@@ -238,6 +238,10 @@ identity signal to recover — the only structure to find is **attributes**.
 2. **Model — InsightFace `buffalo_l` (ArcFace).** Chosen because it is face-specialized and,
    per face, returns a 512-d ArcFace embedding **plus** predicted age/gender/pose. We cluster
    the embedding and use the attributes as *evidence* to characterize and validate clusters.
+   We picked **`buffalo_l`** specifically because it's a SOTA face-recognition stack that
+   **bundles detection + recognition + attribute prediction** in one CPU-only (onnxruntime)
+   package; whether a *face-specialized* model is even needed is then tested empirically against
+   the generic-backbone DINOv2 ablation below.
    As an **ablation**, we also embed the same faces with **DINOv2** — the *same*
    `facebook/dinov2-base` from Part A. It's a **generic** model (not face-specific, unlike
    ArcFace), so it's a baseline for "does a face-specialized model cluster faces better than a
