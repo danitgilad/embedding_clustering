@@ -33,7 +33,7 @@ part_a:
   point_mae:
     checkpoint: checkpoints/point_mae_pretrain.pth
   clustering:
-    algorithms: [kmeans, agglomerative]
+    algorithms: [kmeans]      # KMeans only; cross-encoder comparison lives in part_a_overview.png
     k_min: 2
     k_max: 8
 

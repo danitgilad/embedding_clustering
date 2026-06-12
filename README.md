@@ -150,8 +150,8 @@ UMAP + clusters deterministically, and renders — so the HTML can be rebuilt/re
   histograms show the **same- vs different-gender** and **same- vs different-age** distance
   distributions (Δmean per encoder), mirroring `feature_distributions.png`.
 
-Static PNGs (UMAP scatters, metric tables, and **annotated per-cluster montages** — each row
-labelled with the cluster's stats) are also written under `reports/` for quick at-a-glance review.
+Static PNGs (overview figures, **annotated per-cluster montages**, and — for Part B — a combined
+algorithm-comparison figure) are also written under `reports/` for quick at-a-glance review.
 
 ---
 
@@ -179,11 +179,13 @@ deliberately ignore (greyscale shape / xyz geometry only).
    **CLIP** (`openai/clip-vit-base-patch32`, image features → 512-d) as a second 2D encoder, to
    test whether *any* 2D render feature wins or DINOv2 specifically. (Colour is not used — see
    the note under Findings.)
-3. **3D feature (Point-MAE).** Sample 1024 points from the mesh surface and encode them with
-   the pretrained Point-MAE encoder (pure-torch, CPU) into a 768-d vector
-   (max ++ mean pool over group tokens). No rendering involved.
-4. **Cluster** each embedding identically: standardize → L2-normalize → KMeans and
-   Agglomerative, with *k* chosen by best cosine silhouette over k∈[2,8].
+3. **3D feature (Point-MAE).** Sample 1024 points from the mesh surface, **centre them and scale
+   to the unit sphere** (so the descriptor is translation/scale-invariant), then encode with the
+   pretrained Point-MAE encoder (pure-torch, CPU) into a 768-d vector (max ++ mean pool over group
+   tokens). No rendering involved.
+4. **Cluster** each embedding identically: standardize → L2-normalize → **KMeans**, with *k*
+   chosen by best cosine silhouette over k∈[2,8]. (Part A uses KMeans only; the cross-encoder
+   comparison lives in `part_a_overview.png`.)
 
 **Findings.** All three encoders produce coherent clusters; the **2D render-based DINOv2
 feature separates the glasses most cleanly**:
@@ -193,14 +195,6 @@ feature separates the glasses most cleanly**:
 | **DINOv2 (2D render)**  | 7 | **0.479**    | **0.731**        | **4.369**           |
 | Point-MAE (3D mesh)     | 7 | 0.407        | 1.008            | 3.002               |
 | CLIP (2D render)        | 3 | 0.358        | 1.382            | 3.560               |
-
-**Agglomerative is a cross-check, not a separate result.** Alongside KMeans we also cluster with
-**Agglomerative (Ward)** — a hierarchical method with different assumptions than centroid-based
-KMeans — purely to confirm the encoder ranking is *algorithm-robust*. It gives the **same DINOv2 >
-Point-MAE ordering** (0.489 vs 0.407 silhouette), so the result isn't an artifact of one algorithm.
-That's why Agglomerative appears only as *numbers* — the `*_metrics.png` table and the overview's
-*Agglo. sil* column — and is never visualized separately: the KMeans partition carries the visual
-narrative.
 
 **Is the different k fair?** Yes. *k* is chosen **per encoder by the same rule** — the silhouette
 sweep over k∈[2,8]. DINOv2/Point-MAE peak at **k=7**, CLIP at **k=3**; that difference is *itself a
@@ -243,7 +237,7 @@ small near-zero tail = the near-duplicate left/right frame variants.)
 **Figures** (`reports/part_a/`): the main one is **[`part_a_overview.png`](reports/part_a/part_a_overview.png)** — a single panel
 per encoder where each glasses **render is placed at its UMAP point**, framed in its
 **cluster colour**, labelled with its **GLB id**, and titled with the encoder's metrics — plus a
-**cross-encoder comparison table** (k\*, silhouette, Davies–Bouldin, Calinski–Harabasz, agglomerative,
+**cross-encoder comparison table** (k\*, silhouette, Davies–Bouldin, Calinski–Harabasz,
 and the fixed-k=6 column) and a one-line takeaway. It makes "which glasses landed in which cluster,
 for each feature" inspectable at a glance (CLIP's coarse 3-cluster grouping next to DINOv2/Point-MAE's 7).
 **[`part_a_k6_umap.png`](reports/part_a/part_a_k6_umap.png)** is the visual companion to that fixed-k
@@ -253,9 +247,9 @@ directly comparable with k held equal.
 the *Feature-distribution cross-check* above (pairwise-distance spread + the intra/inter Δmean per
 encoder, with a "how to read" caption). Also written:
 **[`dinov2_clusters_montage.png`](reports/part_a/dinov2_clusters_montage.png)** &c — glasses grouped
-by cluster with coloured cluster headers, GLB ids, and a member table — and `*_metrics.png` (metric
-tables annotated with ↑/↓ and the best value per column). The per-algorithm UMAP scatters are
-intentionally *not* emitted for Part A (the overview covers them, far richer). The interactive
+by cluster with coloured cluster headers, GLB ids, a member table, **and the clustering metrics in
+its header**. Part A clusters with **KMeans only**, so there's no standalone metrics table or
+per-algorithm scatter — the overview's comparison table covers that. The interactive
 **[`viewer.html`](reports/part_a/viewer.html)** is the richest view (hover for a large colour render + id).
 
 ---
@@ -282,6 +276,10 @@ identity signal to recover — the only structure to find is **attributes**.
    Agglomerative / HDBSCAN). For ArcFace, *k* can be chosen by silhouette or by **attribute
    alignment** (see "Choosing k"); clusters are validated against the model's age/gender
    predictions as pseudo-labels (NMI / ARI / purity / AMI).
+   > **Caveat — mild circularity:** for ArcFace, the same model supplies *both* the embedding and
+   > the gender/age labels we validate it against, so that check is partly self-referential. The
+   > generic-DINOv2 ablation (a different embedding scored against ArcFace's *independent* labels)
+   > is the cleaner test — and it still groups by gender, which corroborates the finding.
 
 **Findings — the clusters organize by gender and age.** KMeans (k = 6) yields:
 
@@ -315,7 +313,7 @@ Observations:
 - **Low silhouette is expected and informative**: face embeddings lie on a *continuous*
   manifold (identity/attribute space), not in well-separated blobs — so partitional methods
   impose useful but soft boundaries. **HDBSCAN found no dense clusters at all** — k=0, every
-  point labelled noise (`arcface_hdbscan_umap.png`). HDBSCAN is *density-based* (no preset k): it
+  point labelled noise (the HDBSCAN panel of `arcface_algorithms.png`). HDBSCAN is *density-based* (no preset k): it
   forms a cluster only where a region of ≥`min_cluster_size` points (we use `max(5, N/20)` = **25**
   for 500 faces) is denser than its surroundings, separated by lower-density gaps. On a continuous
   manifold no such density-separated island exists, so it returns **k=0 — meaning "no
@@ -357,8 +355,9 @@ is the generic-backbone ablation.
 embedding directly — pairwise cosine distances split by **same vs different gender / age** (Δmean =
 how much the embedding separates that attribute; generic-DINOv2 separates gender *more* in raw
 distance, Δ0.15, than ArcFace, Δ0.03). Also: [`arcface_clusters_montage.png`](reports/part_b/arcface_clusters_montage.png)
-(sample faces per cluster), `*_umap.png` scatters (incl. `arcface_hdbscan_umap.png` — k=0, all noise),
-[`arcface_metrics.png`](reports/part_b/arcface_metrics.png).
+(sample faces per cluster), and **[`arcface_algorithms.png`](reports/part_b/arcface_algorithms.png)**
+— one combined figure with a UMAP per clustering algorithm (KMeans / Agglomerative / HDBSCAN, the
+last showing k=0 all-noise) plus the metrics table beneath.
 Per-cluster profiles in [`arcface_results.json`](reports/part_b/arcface_results.json). (Unlike Part A, the encoders here embed the **colour** face crop —
 colour *is* used.)
 

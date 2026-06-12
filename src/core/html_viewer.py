@@ -128,7 +128,7 @@ def make_hist_spec(title: str, xlabel: str, named_arrays, n_bins: int = 30,
                "mean": (float(v.mean()) if len(v) else None)}
               for n, c, v in arrs]
     return {"title": title, "xlabel": xlabel,
-            "ylabel": "density" if density else "pair count", "series": series}
+            "ylabel": "density (area = 1)" if density else "pair count", "series": series}
 
 
 def _hist_figure_json(spec: dict) -> str:

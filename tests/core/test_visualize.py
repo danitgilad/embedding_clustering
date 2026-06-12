@@ -1,5 +1,16 @@
 import numpy as np
-from src.core.visualize import scatter_2d, metric_table_png, cluster_montage
+from src.core.visualize import (algorithm_comparison_png, scatter_2d, metric_table_png,
+                                cluster_montage)
+
+
+def test_algorithm_comparison_png_writes(tmp_path):
+    coords = np.random.RandomState(0).rand(12, 2)
+    algo_labels = {"kmeans": np.array([0, 1] * 6), "hdbscan": np.full(12, -1)}
+    metrics = {"kmeans": {"silhouette": 0.4, "davies_bouldin": 1.2},
+               "hdbscan": {"silhouette": float("nan"), "davies_bouldin": float("nan")}}
+    out = algorithm_comparison_png(coords, algo_labels, metrics, tmp_path / "algos.png",
+                                   title="cmp", notes={"hdbscan": "all noise (k=0)"})
+    assert out.exists() and out.stat().st_size > 0
 
 def test_scatter_writes_png(tmp_path):
     pts = np.random.RandomState(0).rand(20, 2)

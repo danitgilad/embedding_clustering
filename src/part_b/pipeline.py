@@ -17,7 +17,7 @@ from src.core.cluster import cluster
 from src.core.embedding_store import save_embeddings
 from src.core.reduce import preprocess as _pre, umap_2d
 from src.core.types import Asset
-from src.core.visualize import cluster_montage, metric_table_png, scatter_2d
+from src.core.visualize import algorithm_comparison_png, cluster_montage
 from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
@@ -108,6 +108,8 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
 
     results: dict[str, dict] = {}
     primary_labels = None
+    algo_labels: dict[str, np.ndarray] = {}
+    algo_notes: dict[str, str] = {}
     for algo in algorithms:
         res = cluster(X, algo, k_min, k_max, seed, score_fn=score_fn)
         if primary_labels is None:
@@ -120,19 +122,19 @@ def run_clustering_stage(extractor, assets: Sequence[Asset], out_dir: str | Path
                         M.external_metrics(res.labels, age_truth).items()})
             results[f"{algo}__profile"] = characterize_clusters(res.labels, emb.ids, attrs)
         results[algo] = row
-        note = ""
+        algo_labels[algo] = res.labels
         if algo == "hdbscan" and res.n_clusters == 0:
             mcs = max(5, X.shape[0] // 20)
-            note = ("HDBSCAN is density-based (no preset k): it forms a cluster only where a region "
-                    f"of ≥{mcs} points is denser than its surroundings, separated by lower-density "
-                    "gaps. It found none → every point is noise (k=0) — the honest signature of "
-                    "a continuous embedding manifold, not a failure.")
-        scatter_2d(coords, res.labels, fig_dir / f"{emb.name}_{algo}_umap.png",
-                   title=f"{emb.name} · {algo} (k={res.n_clusters})", note=note)
-    metric_table_png({a: {k: v for k, v in r.items() if isinstance(v, float)}
-                      for a, r in results.items() if not a.endswith("__profile")},
-                     fig_dir / f"{emb.name}_metrics.png",
-                     title=f"{emb.name} face clustering metrics")
+            algo_notes[algo] = (f"density-based (no preset k): no region of ≥{mcs} points was "
+                                "denser than its surroundings → all noise (k=0), the signature "
+                                "of a continuous manifold, not a failure.")
+    # one combined figure per encoder: a UMAP per algorithm + the metrics table (replaces the
+    # separate _<algo>_umap.png scatters and the standalone _metrics.png).
+    algorithm_comparison_png(
+        coords, algo_labels,
+        {a: {k: v for k, v in results[a].items() if isinstance(v, float)} for a in algorithms},
+        fig_dir / f"{emb.name}_algorithms.png",
+        title=f"{emb.name} — clustering algorithms compared on the shared UMAP", notes=algo_notes)
     if montage_images and primary_labels is not None:
         sel = [(montage_images[i], int(primary_labels[j]))
                for j, i in enumerate(emb.ids) if i in montage_images]

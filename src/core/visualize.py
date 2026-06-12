@@ -65,6 +65,59 @@ def scatter_2d(points: np.ndarray, labels: np.ndarray, out_path: str | Path,
     return out_path
 
 
+def algorithm_comparison_png(coords: np.ndarray, algo_labels: Mapping[str, np.ndarray],
+                             metrics: Mapping[str, Mapping[str, float]], out_path: str | Path,
+                             title: str = "", notes: Mapping[str, str] | None = None) -> Path:
+    """One figure comparing clustering algorithms on a shared UMAP: a scatter per algorithm
+    (same layout, coloured by that algorithm's clusters, discrete legend) on top, and a metrics
+    table (rows = algorithms, best per column bold) beneath. Replaces the separate per-algorithm
+    `_<algo>_umap.png` scatters and the standalone `_metrics.png`."""
+    out_path = Path(out_path)
+    coords = np.asarray(coords, dtype=float)
+    notes = notes or {}
+    algos = list(algo_labels)
+    n = len(algos)
+    cmap = plt.get_cmap("tab10")
+    fig = plt.figure(figsize=(5.4 * n, 6.4), dpi=120)
+    gs = fig.add_gridspec(2, n, height_ratios=[5, 1.7], hspace=0.32, top=0.9, bottom=0.06)
+    for j, algo in enumerate(algos):
+        ax = fig.add_subplot(gs[0, j])
+        labels = np.asarray(algo_labels[algo])
+        for k, c in enumerate(sorted({int(v) for v in labels})):
+            mm = labels == c
+            col = (0.7, 0.7, 0.7) if c == -1 else cmap(k % 10)
+            lbl = f"noise (n={int(mm.sum())})" if c == -1 else f"cluster {c} (n={int(mm.sum())})"
+            ax.scatter(coords[mm, 0], coords[mm, 1], color=col, s=16, alpha=0.85, label=lbl)
+        n_clusters = len(set(int(v) for v in labels) - {-1})
+        ax.set_title(f"{algo} (k={n_clusters})", fontsize=11)
+        ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2"); ax.set_xticks([]); ax.set_yticks([])
+        ax.legend(fontsize=7, loc="best", framealpha=0.9)
+        if algo in notes:
+            ax.text(0.5, -0.12, notes[algo], transform=ax.transAxes, ha="center", va="top",
+                    fontsize=7.5, color="#444", wrap=True)
+    tax = fig.add_subplot(gs[1, :]); tax.axis("off")
+    keys = sorted({k for r in metrics.values() for k in r})
+    arrow = {"up": " ↑", "down": " ↓"}
+    col_labels = [k + arrow.get(_metric_direction(k) or "", "") for k in keys]
+    body = [[("nan" if not np.isfinite(metrics[a].get(k, float("nan"))) else f"{metrics[a][k]:.3f}")
+             for k in keys] for a in algos]
+    t = tax.table(cellText=body, rowLabels=algos, colLabels=col_labels, loc="center", cellLoc="center")
+    t.auto_set_font_size(False); t.set_fontsize(8.5); t.scale(1, 1.45)
+    for ci, k in enumerate(keys):
+        d = _metric_direction(k)
+        finite = [(i, metrics[a][k]) for i, a in enumerate(algos)
+                  if isinstance(metrics[a].get(k), (int, float)) and np.isfinite(metrics[a].get(k))]
+        if d and finite:
+            bi = (max if d == "up" else min)(finite, key=lambda t: t[1])[0]
+            t[bi + 1, ci].set_text_props(fontweight="bold")
+    tax.text(0.5, -0.04, "↑ higher better · ↓ lower better · best per column bold.  silhouette "
+             "needs ≥2 clusters (nan for HDBSCAN noise-only).", transform=tax.transAxes,
+             ha="center", va="top", fontsize=7.5, color="#555")
+    fig.suptitle(title, fontsize=13)
+    fig.savefig(out_path, bbox_inches="tight"); plt.close(fig)
+    return out_path
+
+
 def metric_table_png(rows: Mapping[str, Mapping[str, float]], out_path: str | Path,
                      title: str = "") -> Path:
     """Render a {row_name: {metric: value}} table as a PNG, with good/bad context.

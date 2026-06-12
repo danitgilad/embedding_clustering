@@ -16,7 +16,7 @@ from src.core.cluster import cluster
 from src.core.embedding_store import save_embeddings
 from src.core.reduce import preprocess as _pre
 from src.core.types import Asset, FeatureExtractor
-from src.core.visualize import cluster_montage, metric_table_png
+from src.core.visualize import cluster_montage
 from src.utils.io import ensure_dir, write_json
 
 log = logging.getLogger(__name__)
@@ -73,21 +73,19 @@ def run_clustering_stage(extractor: FeatureExtractor, assets: Sequence[Asset],
         if primary_labels is None:
             primary_labels = res.labels
         results[algo] = {"n_clusters": res.n_clusters, **M.internal_metrics(X, res.labels)}
-    metric_table_png({a: {k: v for k, v in r.items() if k != "n_clusters"}
-                      for a, r in results.items()},
-                     fig_dir / f"{extractor.name}_metrics.png",
-                     title=f"{extractor.name} clustering metrics — KMeans (primary) vs "
-                           f"Agglomerative (robustness cross-check)")
-    # Per-cluster montage (primary algorithm = KMeans). The plain per-algorithm UMAP scatters
-    # are intentionally NOT written for Part A — part_a_overview.png + the interactive viewer
-    # cover the same ground far more richly (renders, GLB ids, cluster colours, metrics table).
+    # Part A clusters with KMeans only. The per-cluster montage carries the metrics in its header,
+    # and the cross-encoder comparison table lives in part_a_overview.png — so no standalone
+    # metrics table or per-algorithm UMAP scatter is written here.
     if montage_images and primary_labels is not None:
         sel = [(montage_images[i], int(primary_labels[j]), i)
                for j, i in enumerate(emb.ids) if i in montage_images]
         if sel:
+            km = results[algorithms[0]]
             cluster_montage([p for p, _, _ in sel], [lab for _, lab, _ in sel],
                             fig_dir / f"{extractor.name}_clusters_montage.png",
                             ids=[i for _, _, i in sel], crop=True, summary=True,
-                            caption=f"{extractor.name}: glasses grouped by KMeans cluster")
+                            caption=(f"{extractor.name} · KMeans k={km['n_clusters']} · "
+                                     f"silhouette={km['silhouette']:.3f} · "
+                                     f"DB={km['davies_bouldin']:.2f} · CH={km['calinski_harabasz']:.2f}"))
     write_json(results, out / f"{extractor.name}_results.json")
     return results

@@ -20,6 +20,7 @@ def test_run_clustering_stage_writes_outputs(tmp_path):
     assert "kmeans" in results
     assert (tmp_path / "fake.npy").exists()
     assert (tmp_path / "figures").exists()
-    # Part A no longer writes per-algorithm UMAP scatters (overview covers that)
+    # Part A (KMeans-only) writes no per-algorithm scatter and no standalone metrics table —
+    # the montage carries the metrics and part_a_overview.png carries the comparison.
     assert not (tmp_path / "figures" / "fake_kmeans_umap.png").exists()
-    assert (tmp_path / "figures" / "fake_metrics.png").exists()
+    assert not (tmp_path / "figures" / "fake_metrics.png").exists()

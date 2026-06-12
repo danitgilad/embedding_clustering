@@ -97,7 +97,9 @@ def build_part_a_viewer(cfg: Config, out_dir: str | Path, render_dir: str | Path
                f"Point-MAE uses mesh geometry — <b>colour &amp; texture are not used</b> by the "
                f"clustering. The <b>feature-distance histogram beside the scatter</b> "
                f"(intra- vs inter-cluster cosine distance) switches with the selected encoder — a "
-               f"wider gap = more discriminative features."),
+               f"wider gap between the dashed means = more discriminative features. (y-axis = "
+               f"<i>density</i>: each curve is normalised to area 1, so the two groups compare "
+               f"despite different pair counts.)"),
         always_show_thumbs=True, thumb_scale=2.0, hover_thumbs=hover_thumbs, hist=hist,
         page_title="Part A — Glasses Cluster Viewer")
     out_html = out_dir / "viewer.html"
@@ -166,7 +168,10 @@ def build_feature_distribution_figure(cfg: Config, out_dir: str | Path,
              "mean(intra). A LARGER Δmean means same-cluster items sit much closer than "
              "different-cluster ones → more discriminative features. Ranking: " + ranking +
              " — matching the silhouette order; CLIP's heavy intra/inter overlap is why it "
-             "separates worst.", ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
+             "separates worst. (Right-panel y-axis = density: each curve is normalised so its area "
+             "= 1, i.e. bin height = fraction of pairs per unit distance, making the two "
+             "differently-sized groups comparable in shape.)",
+             ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
     fig.tight_layout(rect=(0, 0.045, 1, 0.965))
     out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"
     ensure_dir(out_path.parent)
@@ -309,17 +314,15 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
     fixed_k = min(6, cfg.part_a.clustering.k_max)
     k_min, k_max = cfg.part_a.clustering.k_min, cfg.part_a.clustering.k_max
 
-    # cross-encoder comparison: silhouette-selected KMeans + Agglomerative + a FIXED-k row,
-    # so the encoders are compared both at their own best k and at one common k (fairness).
+    # cross-encoder comparison: each encoder's silhouette-selected KMeans metrics + a FIXED-k
+    # column, so the encoders are compared both at their own best k and at one common k (fairness).
     comp = []
     for it in items:
         Xe, m = np.asarray(it["X"], dtype=float), it["metrics"]
         kstar = len({int(v) for v in it["labels"]})
-        agg = cluster(Xe, "agglomerative", k_min, k_max, cfg.seed)
         fk = cluster(Xe, "kmeans", fixed_k, fixed_k, cfg.seed)
         comp.append((f"{it['name']} · {it['modality']}", kstar, m["silhouette"],
                      m["davies_bouldin"], m["calinski_harabasz"],
-                     M.internal_metrics(Xe, agg.labels)["silhouette"],
                      M.internal_metrics(Xe, fk.labels)["silhouette"]))
 
     fig = plt.figure(figsize=(7.5 * n, 10.0), dpi=130)
@@ -337,13 +340,13 @@ def build_part_a_overview(cfg: Config, out_dir: str | Path, render_dir: str | Pa
     # comparison table + takeaway spanning the bottom
     tax = fig.add_subplot(gs[1, :]); tax.axis("off")
     cols = ["encoder · modality", "k*", "silhouette ↑", "Davies–Bouldin ↓",
-            "Calinski–Harabasz ↑", "Agglo. sil ↑", f"KMeans sil @ k={fixed_k} ↑"]
-    body = [[r[0], str(r[1]), f"{r[2]:.3f}", f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.3f}",
-             f"{r[6]:.3f}"] for r in comp]
+            "Calinski–Harabasz ↑", f"KMeans sil @ k={fixed_k} ↑"]
+    body = [[r[0], str(r[1]), f"{r[2]:.3f}", f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.3f}"]
+            for r in comp]
     t = tax.table(cellText=body, colLabels=cols, loc="upper center", cellLoc="center")
     t.auto_set_font_size(False); t.set_fontsize(9); t.scale(1, 1.5)
     # bold the best value per quality column (col index matches comp tuple index)
-    for ci, direction in {2: "up", 3: "down", 4: "up", 5: "up", 6: "up"}.items():
+    for ci, direction in {2: "up", 3: "down", 4: "up", 5: "up"}.items():
         col_vals = [r[ci] for r in comp]
         bi = (max if direction == "up" else min)(range(len(col_vals)), key=lambda i: col_vals[i])
         t[bi + 1, ci].set_text_props(fontweight="bold")

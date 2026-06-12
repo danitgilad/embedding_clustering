@@ -115,8 +115,10 @@ def build_part_b_viewer(cfg: Config, out_dir: str | Path, faces_dir: str | Path)
                "view: ArcFace under both k-selections (attribute k=3 vs silhouette k=6) and "
                "the generic-DINOv2 encoder — toggle to compare the clusterings on one layout. "
                "Two feature-distance histograms beside the scatter (same vs different gender, "
-               "and same vs different age bucket) switch with the encoder — a wider gap = the "
-               "embedding separates that attribute more."),
+               "and same vs different age bucket) switch with the encoder — a wider gap between "
+               "the dashed means = the embedding separates that attribute more. (y-axis = "
+               "density: each curve normalised to area 1, so the groups compare despite "
+               "different counts.)"),
         always_show_thumbs=False, extra_html=extra_html, hist=hist,
         page_title="Part B — Face Cluster Viewer")
     out_html = out_dir / "viewer.html"
@@ -200,7 +202,9 @@ def build_part_b_feature_distribution(cfg: Config, out_dir: str | Path,
              "GENDER (middle) or AGE bucket (right); dashed = means, Δmean = mean(different) − "
              "mean(same). Positive Δmean ⇒ same-attribute faces sit closer ⇒ the embedding encodes "
              "that attribute. " + rank + ". Both separate gender more than age — matching the "
-             "cluster-purity results; a cluster split would be near-flat (the manifold is continuous).",
+             "cluster-purity results; a cluster split would be near-flat (the manifold is "
+             "continuous). y-axis = density: each curve normalised so its area = 1 (bin height = "
+             "fraction of pairs per unit distance), so the two groups are comparable in shape.",
              ha="center", va="bottom", fontsize=8.5, color="#444", wrap=True)
     fig.tight_layout(rect=(0, 0.05, 1, 0.96))
     out_path = Path(out_path) if out_path else out_dir / "figures" / "feature_distributions.png"

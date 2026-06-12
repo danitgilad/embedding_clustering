@@ -79,9 +79,9 @@ primary algorithm in both parts. *Why:* fast, deterministic (fixed seed), and a 
 imposes useful but soft boundaries.
 
 ### Agglomerative
-Bottom-up hierarchical merging (Ward linkage). *Used:* second algorithm in both parts as a
-cross-check. *Why:* makes no centroid/sphericity assumption, so agreement with KMeans is evidence
-the structure is real, not an artifact of one algorithm.
+Bottom-up hierarchical merging (Ward linkage). *Used:* **Part B only** (alongside KMeans +
+HDBSCAN). *Why:* makes no centroid/sphericity assumption, so agreement with KMeans is evidence
+the structure is real, not an artifact of one algorithm. (Part A clusters with KMeans only.)
 
 ### HDBSCAN
 Density-based clustering (no preset *k*). It declares a cluster only where a region of at least

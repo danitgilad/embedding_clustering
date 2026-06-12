@@ -27,9 +27,6 @@ better capture "similar-looking glasses"?
 | Point-MAE (3D) | 0.407 |
 | CLIP (2D) | 0.358 |
 
-(KMeans shown; **Agglomerative is a robustness cross-check** — same DINOv2 > Point-MAE ordering, so
-the ranking isn't a KMeans artifact. It appears as numbers only, KMeans carries the visual narrative.)
-
 **Conclusion:** this is really **shape-from-2D-render vs shape-from-3D-points** (colour is not a
 factor). DINOv2 separates best, but **CLIP — also 2D — does worst**, so it isn't "2D beats 3D";
 it's that **DINOv2's fine-grained features** beat both pure geometry and CLIP's coarser,
@@ -74,7 +71,9 @@ metrics only score the labelled axes, not everything the embedding encodes.
 No ground-truth labels, so we use **internal** metrics — **cosine silhouette** (cohesion vs
 separation), Davies–Bouldin ↓, Calinski–Harabasz ↑. Part B additionally has **external**
 validation: the model's predicted age/gender act as pseudo-labels, scored by **NMI / ARI /
-purity**. This turns "is this clustering good?" from a guess into a measurement.
+purity**. This turns "is this clustering good?" from a guess into a measurement. *(Caveat: for
+ArcFace this is mildly circular — same model gives both the embedding and the labels; the
+generic-DINOv2 ablation, scored against ArcFace's independent labels, is the cleaner check.)*
 
 ## How we chose the number of clusters
 **Automatically, two ways (configurable per part).**
