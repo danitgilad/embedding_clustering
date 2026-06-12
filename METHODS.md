@@ -63,10 +63,23 @@ datasets are small and the embeddings already compact — but available as a den
 step for higher-dimensional inputs.
 
 ### UMAP
-Nonlinear 2D projection (`n_neighbors=10`, `min_dist=0.1`, **cosine**) used **for display only**
-— every scatter/overview is a UMAP layout. *Caveat:* UMAP distances and gaps are **not metric**
-and it can exaggerate clusters on a continuous manifold, so **all clustering and metrics run on
-the full-dimensional embeddings**, never on the 2D coordinates. Seed-fixed for reproducibility.
+Nonlinear 2D projection (`n_neighbors=10`, `min_dist=0.1`, **cosine**) used **for display only** —
+every scatter/overview is a UMAP layout. It shows neighbourhood structure (what sits together,
+whether groups separate), but it's a *lens, not the analysis*, and does **not** faithfully preserve:
+- **Distance & gaps** — how far apart two clusters look is largely arbitrary; don't read
+  "far / close / similar" off the plot.
+- **Size & density** — UMAP equalises densities, so a big blob isn't necessarily a looser or
+  larger group than a small one.
+- **Cluster count** — on a *continuous* manifold (exactly Part B) it tends to tear the cloud into
+  tidy islands that look more discrete than the data is (which is why we trust HDBSCAN's "no dense
+  clusters" and the metrics over the picture).
+- **Layout** depends on `n_neighbors` / `min_dist` / seed; we fix the seed for reproducibility,
+  but a different `n_neighbors` would redraw it.
+
+**Key caveat:** we **cluster and score on the full-dimensional embeddings**, never the 2D
+coordinates — so a point can sit visually *inside* another cluster's region yet be correctly
+labelled by the high-D clustering. The colours (cluster labels) are the truth; the 2D positions
+are an approximation to explore *alongside* the metrics, never the evidence itself.
 
 ---
 
